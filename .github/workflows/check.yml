@@ -1,0 +1,156 @@
+# The required checks on every pull request.
+name: check
+
+# Pull requests the factory's App opens (deploy, release) run these too, at once: no workflow opens pull requests.
+# Theirs are lighter: a release builds no image, and a deploy checks the image it pins rather than building one (the
+# `kind` job). They also run on main after each merge, which is what the README's badge reports, and on the merge
+# queue's commit for a pull request, which holds the change on main as it will merge: everything runs there, whatever
+# the pull request is, since a merge queue's commit names no author.
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Whether this is a release or deploy pull request that the factory's App opened and nobody has changed. Only those skip
+  # checks, and a skipped job counts as passed for the ruleset, so the test is the author and the exact files and
+  # lines that change. Anything else, or this job failing, is `code` and runs everything; so is every run that is not a
+  # pull request's, the merge queue's included.
+  kind:
+    name: which checks apply
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      kind: ${{ steps.which.outputs.kind }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          persist-credentials: false
+          # The merge commit and its parents: the first is the base, so the diff between them is what would merge.
+          fetch-depth: 2
+      - id: which
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          kind=code
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$AUTHOR" = 'mrogan-software-factory[bot]' ]; then
+            files=$(git diff --name-only HEAD^1 HEAD)
+            # Every changed line of package.json is its version.
+            other_lines=$(git diff --unified=0 HEAD^1 HEAD -- package.json | grep -E '^[-+]' | grep -vE '^(\+\+\+|---) ' | grep -vE '^[-+]  "version": "[^"]+",$' || true)
+            if [ -n "$files" ] && ! grep -vqxE 'CHANGELOG\.md|package\.json|\.release-please-manifest\.json' <<< "$files" && [ -z "$other_lines" ]; then
+              kind=release
+            elif [ "$files" = deploy/overlays/local/image/kustomization.yaml ]; then
+              kind=deploy
+            fi
+          fi
+          echo "$kind"
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
+
+  check:
+    name: lint, types, tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # mise itself at one named release (test/toolchain.test.ts). With mise.lock beside mise.toml, the action installs
+      # with `--locked`: the versions and checksums the lock holds, and it fails when the lock has none for a request,
+      # rather than resolve that day's release.
+      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          version: 2026.10.17
+      - run: pnpm install --frozen-lockfile
+      - run: make check
+
+  # A deploy pull request builds nothing: it checks that the image it pins was built from main. Any change that moves the
+  # pin checks that the image it moves to was signed there. A release pull request changes nothing the image holds, so
+  # it skips this.
+  image:
+    name: image builds
+    needs: kind
+    if: ${{ !cancelled() && needs.kind.outputs.kind != 'release' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      DEPLOY: ${{ needs.kind.outputs.kind == 'deploy' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The commit and its parent (a pull request's base), so the signature check can tell whether it moves the pin.
+          fetch-depth: 2
+      # build.yml pushes the image tagged and labelled with the commit it was built from, and only on main does it run
+      # with the right to push. A digest from a run on another branch, or one that is not in GHCR, fails here.
+      - name: Check the pinned image was built from main
+        if: env.DEPLOY == 'true'
+        env:
+          FILE: deploy/overlays/local/image/kustomization.yaml
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for ref in $(yq '.images[] | .newName + "@" + .digest' "$FILE"); do
+            case "$ref" in
+              "ghcr.io/$GITHUB_REPOSITORY@sha256:"*) ;;
+              *) echo "::error file=$FILE::$ref is not this repository's image, pinned by digest"; exit 1 ;;
+            esac
+            revisions=$(docker buildx imagetools inspect "$ref" --format '{{ json .Image }}' \
+              | jq -r '[.. | objects | .config?.Labels?["org.opencontainers.image.revision"]? // empty] | unique | .[]')
+            if [ "$(wc -w <<< "$revisions")" -ne 1 ]; then
+              echo "::error file=$FILE::$ref does not name the one commit it was built from (found: ${revisions:-none})"; exit 1
+            fi
+            # "ahead" or "identical": main contains the commit.
+            status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$revisions...main" --jq .status)
+            if [ "$status" != ahead ] && [ "$status" != identical ]; then
+              echo "::error file=$FILE::$ref was built from $revisions, which is not on main"; exit 1
+            fi
+            echo "$ref: built from $revisions, on main"
+          done
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.3
+      # The image carries the signature of build.yml on this repository's main, made with the workflow's own identity,
+      # and an SBOM it attested. Every change that moves the pin, the App's or anyone's, and only the pin it moves: one
+      # made before the image was signed stays as it is until a deploy moves it. HEAD^1 is the base a pull request merges
+      # into, or main before the commit pushed to it.
+      - name: Check the image it moves to was signed by build.yml on main
+        env:
+          FILE: deploy/overlays/local/image/kustomization.yaml
+        run: |
+          identity="https://github.com/$GITHUB_REPOSITORY/.github/workflows/build.yml@refs/heads/main"
+          trust=(--certificate-identity "$identity" --certificate-oidc-issuer https://token.actions.githubusercontent.com)
+          pins='.images[] | .newName + "@" + .digest'
+          # Each read is its own assignment, so one that fails fails the step rather than checking nothing.
+          refs=$(yq "$pins" "$FILE")
+          [ -n "$refs" ] || { echo "::error file=$FILE::$FILE pins no image"; exit 1; }
+          base=$(git show "HEAD^1:$FILE")
+          before=$(yq "$pins" <<< "$base")
+          moved=$(comm -13 <(sort -u <<< "$before") <(sort -u <<< "$refs"))
+          [ -n "$moved" ] || { echo "$FILE: moves no pin, nothing to check"; exit 0; }
+          for ref in $moved; do
+            if ! cosign verify "${trust[@]}" "$ref" > /dev/null; then
+              echo "::error file=$FILE::$ref is not signed by $identity"; exit 1
+            fi
+            if ! cosign verify-attestation --type spdxjson "${trust[@]}" "$ref" > /dev/null; then
+              echo "::error file=$FILE::$ref has no SBOM attested by $identity"; exit 1
+            fi
+            echo "$ref: signed by $identity, with its SBOM attested"
+          done
+      - if: env.DEPLOY != 'true'
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - if: env.DEPLOY != 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

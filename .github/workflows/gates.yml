@@ -1,0 +1,68 @@
+# The gates a pull request to the shop must pass beyond its own lint, types and tests: its journeys compared with the
+# base's, test integrity, dependency review and an image scan, and, as a signal only, whether its tests failed first.
+# They run on the pull request, and again on the merge queue's commit for it, which holds the change on main as it
+# will merge, with the pull requests ahead of it in the queue; whether its tests failed first is said on the pull
+# request alone.
+#
+# They live in Software Factory's repository and are called at a pinned commit, so a change here cannot loosen them.
+name: gates
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+# The jobs here, and the gates they call, which build and run the change's code, get a token that reads the code and
+# nothing more, except that the gates' test integrity also reads the pull request's description, which names the tests
+# the spec contradicts. The gates job grants that read to the whole call, and the factory's workflow, at the commit it
+# is pinned to, gives it to test integrity alone. Without this they would get the repository's default token, with
+# whatever it allows; on the merge queue's commit too, where nothing else bounds it.
+permissions:
+  contents: read
+
+# A merge queue's run names no head branch; its own branch, gh-readonly-queue/..., is one for each commit it tests.
+concurrency:
+  group: gates-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Whether this is a release or deploy pull request the factory's App opened and nobody changed, as check.yml says.
+  # Anything else is `code`, and every gate applies; so is the merge queue's commit, which names no author.
+  kind:
+    name: which gates apply
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      kind: ${{ steps.which.outputs.kind }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - id: which
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          kind=code
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$AUTHOR" = 'mrogan-software-factory[bot]' ]; then
+            files=$(git diff --name-only HEAD^1 HEAD)
+            other_lines=$(git diff --unified=0 HEAD^1 HEAD -- package.json | grep -E '^[-+]' | grep -vE '^(\+\+\+|---) ' | grep -vE '^[-+]  "version": "[^"]+",$' || true)
+            if [ -n "$files" ] && ! grep -vqxE 'CHANGELOG\.md|package\.json|\.release-please-manifest\.json' <<< "$files" && [ -z "$other_lines" ]; then
+              kind=release
+            elif [ "$files" = deploy/overlays/local/image/kustomization.yaml ]; then
+              kind=deploy
+            fi
+          fi
+          echo "$kind"
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
+
+  gates:
+    needs: kind
+    # A called workflow's jobs hold no more than this grants; at this pin, test integrity alone asks for the description.
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: the-roganator/cv-software-factory/.github/workflows/app-gates.yml@ef6f688ebab8efadda0baf0c66388e7178882cd5 # main
+    with:
+      skip: ${{ needs.kind.outputs.kind != 'code' }}

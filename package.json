@@ -1,0 +1,38 @@
+{
+  "name": "worlds-worst-website",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Mossop's Practical Sundries: the small shop that Software Factory looks after.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@12.16.1+sha512.091d1dee7927575661b25dab3c2ae31cafc1c54d6b71ed6a6600cf0c1cb10434a447eae14015f1b23e2e6bedeed79df94a932e2164d2832280dce3fb32f656d1",
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "scripts": {
+    "seed": "node scripts/seed.ts",
+    "dev": "node scripts/seed.ts && node --watch --import ./src/telemetry.ts src/server.ts",
+    "start": "node --import ./src/telemetry.ts src/server.ts",
+    "prepare": "lefthook install"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "~1.14.4",
+    "@openfeature/flagd-provider": "^0.18.0",
+    "@openfeature/server-sdk": "^1.23.0",
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/core": "^3.0.0",
+    "@opentelemetry/instrumentation": "^0.300.0",
+    "@opentelemetry/instrumentation-http": "^0.300.0",
+    "@opentelemetry/instrumentation-pino": "^0.70.0",
+    "@opentelemetry/resources": "^3.0.0",
+    "@opentelemetry/sdk-node": "^0.300.0",
+    "pino": "^10.4.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.3",
+    "@types/node": "^24.19.2",
+    "lefthook": "^2.1.17",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

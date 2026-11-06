@@ -1,0 +1,16 @@
+# Traefik's weighted service: the ingress sends the shop's visitors here, and it shares them between the stable and
+# the canary Service. Argo Rollouts sets the weights at each step of a release (Argo CD leaves them to it), so these
+# are only where they start: everything to the stable version.
+apiVersion: traefik.io/v1alpha1
+kind: TraefikService
+metadata:
+  name: website
+spec:
+  weighted:
+    services:
+      - name: website
+        port: 80
+        weight: 100
+      - name: website-canary
+        port: 80
+        weight: 0

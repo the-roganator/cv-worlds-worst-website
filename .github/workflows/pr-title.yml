@@ -1,0 +1,22 @@
+# Pull requests are squash-merged, so the title becomes the commit on main: it must be a Conventional Commit.
+#
+# The check itself lives in Software Factory's repository and is called at a pinned commit, so this repository
+# and that one keep the same rule, and a change here cannot loosen it. On the merge queue's commit, it reads the title
+# again from the pull request the queue's branch names.
+name: pr title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    permissions:
+      contents: read
+      pull-requests: read # the title of the pull request a merge queue's commit was made for
+    uses: the-roganator/cv-software-factory/.github/workflows/pr-title.yml@f29b6aa92fa91bf60d7c53252bd41e75e4820d2b # main

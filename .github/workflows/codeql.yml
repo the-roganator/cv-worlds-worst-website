@@ -1,0 +1,25 @@
+# Static analysis of the TypeScript and of the workflows themselves.
+#
+# The analysis lives in Software Factory's repository and is called at a pinned commit, so this repository
+# and that one are held to the same queries, and a change here cannot loosen them.
+#
+# It does not run on the merge queue: the code scanning rule on main judges each pull request's own analysis and
+# does not apply to the queue's groups, and a run on the queue's commit fails when the queue deletes its branch first.
+name: codeql
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '41 5 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    permissions:
+      contents: read
+      security-events: write
+    uses: the-roganator/cv-software-factory/.github/workflows/codeql.yml@f29b6aa92fa91bf60d7c53252bd41e75e4820d2b # main

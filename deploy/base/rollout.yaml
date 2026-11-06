@@ -1,0 +1,122 @@
+# The shop, released as a canary by Argo Rollouts. A new image starts beside the version it replaces, takes a quarter
+# of the traffic, then half, then all of it, and goes on from each step only if the analysis passes; if it fails, the
+# release is rolled back, and the stable version takes it all again. Traefik splits the traffic (traffic-split.yaml),
+# with weights Argo Rollouts sets.
+#
+# Meets the restricted Pod Security Standard: non-root, no privilege escalation, no capabilities.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: website
+spec:
+  replicas: 1
+  strategy:
+    canary:
+      # Argo Rollouts points each Service at its version's pods, by their rollouts-pod-template-hash label.
+      stableService: website
+      canaryService: website-canary
+      trafficRouting:
+        traefik:
+          weightedTraefikServiceName: website
+      # The canary is judged against the version it replaces, by the analysis the factory's repository keeps (its
+      # policy/release.ts): errors, latency and the journeys, throughout and again at the end of each step, which must
+      # also have had enough requests to judge. A failed analysis rolls the release back. The two hashes tell the
+      # versions' telemetry apart.
+      analysis:
+        templates:
+          - templateName: website-background
+            clusterScope: true
+        args:
+          - name: stable-hash
+            valueFrom: { podTemplateHashValue: Stable }
+          - name: canary-hash
+            valueFrom: { podTemplateHashValue: Latest }
+      steps:
+        - setWeight: 25
+        - pause: { duration: 3m }
+        - analysis:
+            templates:
+              - templateName: website-step
+                clusterScope: true
+            args:
+              - name: stable-hash
+                valueFrom: { podTemplateHashValue: Stable }
+              - name: canary-hash
+                valueFrom: { podTemplateHashValue: Latest }
+        - setWeight: 50
+        - pause: { duration: 3m }
+        - analysis:
+            templates:
+              - templateName: website-step
+                clusterScope: true
+            args:
+              - name: stable-hash
+                valueFrom: { podTemplateHashValue: Stable }
+              - name: canary-hash
+                valueFrom: { podTemplateHashValue: Latest }
+  template:
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: website
+          # Each profile pins the image by digest (kustomize `images:`), so a deploy is always a commit.
+          image: website
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.telemetry:4318
+            - name: OTEL_SERVICE_NAME
+              value: website
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.namespace=worlds-worst-website
+            # Every 15s rather than the default minute, so rates settle quickly.
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: "15000"
+            # flagd's sync port, from which the shop's flag context streams the flag set and evaluates each request
+            # itself (src/flags/). flagd runs in a namespace of its own, and the app's NetworkPolicy, kept in the
+            # factory's repository, lets the shop reach this port and nothing else of it.
+            # Plaintext, inside the cluster. The shop serves with every flag off until it syncs.
+            - name: FLAGS_SYNC
+              value: flagd.flagd:8015
+            # The share's public key, which the factory keeps as the ConfigMap share-key. Without it no request is
+            # signed, and the shop serves as ever.
+            - name: SHARE_PUBLIC_KEY_FILE
+              value: /etc/share-key/public-key
+          volumeMounts:
+            - name: share-key
+              mountPath: /etc/share-key
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+      volumes:
+        # Optional, so a pod starts without it; mounted whole rather than by subPath, so a key written after the pod
+        # starts reaches it, and the shop reads the file again at most once a minute.
+        - name: share-key
+          configMap:
+            name: share-key
+            optional: true

@@ -1,0 +1,367 @@
+/* Mossop's Practical Sundries. Cream paper, green ink, and room to breathe. */
+
+:root {
+  --paper: #faf6ea;
+  --card: #fffdf6;
+  --ink: #1f3d2b;
+  --quiet: #a3aa9f;
+  --rule: #d9d2bd;
+  --link: #7a3410;
+  --alert: #8c1d18;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 1.0625rem / 1.6 var(--sans);
+}
+
+.page {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+h1,
+h2,
+h3,
+.masthead-name {
+  font-family: var(--serif);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 2.25rem;
+  margin: 2.5rem 0 1rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin: 2.5rem 0 0.75rem;
+}
+
+h3 {
+  font-size: 1.2rem;
+  margin: 0 0 0.25rem;
+}
+
+p {
+  margin: 0 0 1rem;
+  max-width: 40rem;
+}
+
+a {
+  color: var(--link);
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--link);
+  outline-offset: 2px;
+}
+
+.skip {
+  position: absolute;
+  left: -100rem;
+}
+
+.skip:focus {
+  left: 1rem;
+  top: 1rem;
+  background: var(--card);
+  padding: 0.5rem 1rem;
+}
+
+/* Masthead */
+
+.masthead {
+  border-bottom: 3px double var(--ink);
+  padding: 1.75rem 0 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+}
+
+.masthead-name {
+  font-size: 1.75rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.masthead-motto {
+  margin: 0;
+  color: var(--quiet);
+  font-style: italic;
+  font-family: var(--serif);
+}
+
+.masthead nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+}
+
+.masthead nav a[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Products */
+
+.cards {
+  list-style: none;
+  margin: 1.5rem 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  gap: 1.25rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  padding: 1rem;
+}
+
+.card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  max-width: 9rem;
+  margin: 0 auto 0.75rem;
+}
+
+.card p {
+  margin: 0.25rem 0 0;
+  font-size: 0.95rem;
+}
+
+.price {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.quiet {
+  color: var(--quiet);
+  font-size: 0.95rem;
+}
+
+.departments {
+  list-style: none;
+  margin: 1.5rem 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  gap: 1.25rem;
+}
+
+.departments a {
+  display: block;
+  height: 100%;
+  padding: 1rem;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.departments a:hover {
+  background: var(--card);
+}
+
+.departments strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: 1.25rem;
+}
+
+.filter,
+.pages {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+
+.filter a[aria-current="true"] {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pages {
+  justify-content: space-between;
+  border-top: 1px solid var(--rule);
+  padding-top: 1rem;
+}
+
+.product {
+  display: grid;
+  grid-template-columns: minmax(10rem, 18rem) 1fr;
+  gap: 2rem;
+  align-items: start;
+  margin-top: 1.5rem;
+}
+
+.product img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  padding: 1.5rem;
+}
+
+.product h1 {
+  margin-top: 0;
+}
+
+.facts {
+  margin: 1rem 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+}
+
+.facts dt {
+  color: var(--quiet);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+@media (max-width: 40rem) {
+  .product {
+    grid-template-columns: 1fr;
+  }
+
+  .product img {
+    max-width: 16rem;
+  }
+}
+
+/* Forms */
+
+form {
+  max-width: 32rem;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin: 1rem 0 0.25rem;
+}
+
+input,
+textarea,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="search"],
+textarea {
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  background: var(--card);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+}
+
+textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+button {
+  margin-top: 1rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.search div {
+  flex: 1 1 14rem;
+}
+
+.search button {
+  margin: 0;
+}
+
+.field-error {
+  margin: 0.25rem 0 0;
+  color: var(--alert);
+  font-weight: 600;
+}
+
+.notice {
+  border-left: 4px solid var(--ink);
+  background: var(--card);
+  padding: 0.75rem 1rem;
+}
+
+/* Footer */
+
+.footer {
+  margin-top: 4rem;
+  border-top: 3px double var(--ink);
+  padding: 1.25rem 0 2.5rem;
+  color: var(--quiet);
+  font-size: 0.95rem;
+}
+
+.report summary {
+  cursor: pointer;
+  color: var(--link);
+  text-decoration: underline;
+  width: max-content;
+}
+
+.report form {
+  margin-bottom: 1.5rem;
+}
+
+.report textarea {
+  min-height: 5rem;
+  color: var(--ink);
+}

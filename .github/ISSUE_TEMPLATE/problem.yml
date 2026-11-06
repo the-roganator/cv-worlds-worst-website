@@ -1,0 +1,30 @@
+name: A problem with this repository
+description: Its workflows, its tooling or its documentation. Not the shop's own defects.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The shop's own defects are there on purpose: report those through the "Report a problem" box on the page where you saw them.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      placeholder: |
+        1. mise install && pnpm install
+        2. make check
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The commit, or what the shop's /version says.

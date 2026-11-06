@@ -1,0 +1,61 @@
+# The review gate (Software Factory's ADR 0014), which is its approval-routing check: posts the `review` check, as the
+# review App, on a pull request's head and on the merge queue's commit for it. It works out the pull request's risk
+# tags from its diff and test integrity's run, and passes it by the first rule that holds: Martin opened it, or approved
+# its head after the last push; it is the factory's App's exact pin, every changed line a digest of an image signed on
+# main; it is the App's, with no risk tags and a successful test integrity run at its head (`low-risk`); or, while
+# this repository's AUTONOMY variable is `lights-out`, it is the App's, with tags that are not a release, an
+# improvement or a path CODEOWNERS gives Martin.
+# Anything else is held for Martin, saying why, and the check's summary carries the verdict in a block the factory's
+# line reads. This holds whatever the pull request's base: a stacked one, into the branch below it, is held to main's
+# required checks too, and the queue's commit for one is judged on it and every pull request below it, down to main.
+# Software Factory's docs/COMPONENTS/APPROVAL-ROUTING.md has the tags and the rules.
+#
+# AUTONOMY is this repository's variable, `vars.AUTONOMY`, which the gate reads in main's copy, never from an input,
+# so neither a pull request nor this file can say Lights-out. Only an admin of this repository, Martin, can set it:
+# `gh variable set AUTONOMY -R the-roganator/cv-worlds-worst-website -b lights-out`, and
+# `gh variable delete AUTONOMY -R the-roganator/cv-worlds-worst-website` to go back.
+#
+# The gate lives in Software Factory's repository and is called at a pinned commit, so both repositories keep one rule
+# and a change here cannot loosen it. It judges this repository's pull requests, through the API, and never checks
+# out, builds or runs their code.
+#
+# Only main's copy runs with the App's key. `workflow_run` runs this workflow as main has it, and the key is in this
+# repository's `review` environment, which only main may use. A called workflow's own triggers do not apply, so the
+# triggers are here. A pull request opened, pushed to, reopened, made ready, edited or unlabelled, a review, and the
+# merge queue each run review-requested.yml, this repository's own, which holds nothing; its run starts this one, from
+# main, through `workflow_run`, which names a workflow in the same repository. So does each run of gates.yml that
+# finishes, test integrity among its gates, so the gate judges again once test integrity has its reading: until then,
+# `low-risk` waits for it. A gates run cancelled by a newer push starts nothing, as the newer run will. The pinned gate
+# judges only a `workflow_run`, so this workflow runs on nothing else.
+#
+# A pull request whose run of review-requested.yml GitHub holds for approval (a first-time contributor's fork, a review
+# by Copilot), or gives no secrets (Dependabot's, perhaps), has no `review` check until Martin approves the run or
+# reviews it, and waits as it would for a failing one. The pinned file's header says how each ends.
+#
+# Until the review App's key is in the `review` environment, as the secret REVIEW_APP_PRIVATE_KEY, the gate says its
+# verdict and posts nothing.
+name: review
+
+on:
+  workflow_run:
+    workflows: [review requested, gates]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  # No concurrency here: the called workflow keeps one verdict at a time for a branch, and a caller in the same group
+  # would wait on it for ever.
+  review:
+    if: github.event.workflow_run.name != 'gates' || github.event.workflow_run.conclusion != 'cancelled'
+    permissions:
+      contents: read
+      pull-requests: read
+      # Test integrity's check run at the head, which `low-risk` needs.
+      checks: read
+    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@d80b86288d12d986311c3a05fd19bf41b99ca6e6 # main
+    # The called job names the `review` environment, this repository's, but a secret reaches it only when the caller
+    # passes it, even one held in that environment alone. The called workflow declares the key, so it is passed by name,
+    # and nothing else is.
+    secrets:
+      REVIEW_APP_PRIVATE_KEY: ${{ secrets.REVIEW_APP_PRIVATE_KEY }}

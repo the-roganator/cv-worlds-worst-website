@@ -1,0 +1,9 @@
+# Kustomize knows where a Deployment keeps its selector and its pods' labels, but not a Rollout: this tells it, so the
+# shop's labels (kustomization.yaml) select the Rollout's pods as they did the Deployment's.
+commonLabels:
+  - kind: Rollout
+    path: spec/selector/matchLabels
+    create: true
+  - kind: Rollout
+    path: spec/template/metadata/labels
+    create: true

@@ -1,0 +1,14 @@
+# Dependencies and build output
+node_modules
+coverage/
+*.tsbuildinfo
+
+# The catalogue database, built from data/ by `pnpm seed`
+data/*.db
+
+# Local configuration and secrets
+.env*
+!.env.example
+
+# Editors and tools
+.DS_Store

@@ -1,0 +1,16 @@
+# The shop, as every profile runs it. Profiles add to it in deploy/overlays/<profile>.
+# The cluster provides the namespace; this repository may deploy only into it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: website
+labels:
+  - pairs:
+      app.kubernetes.io/name: website
+      app.kubernetes.io/part-of: worlds-worst-website
+    includeSelectors: true
+resources:
+  - rollout.yaml
+  - service.yaml
+  - traffic-split.yaml
+configurations:
+  - kustomizeconfig.yaml

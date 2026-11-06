@@ -1,0 +1,22 @@
+# The stable version: what the shop is between releases, and all of it when no release is in flight. The factory's
+# probes and crawler look here, so a canary never changes what they see.
+apiVersion: v1
+kind: Service
+metadata:
+  name: website
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# The canary: the new version while a release is in flight. Between releases it points at the stable version too.
+apiVersion: v1
+kind: Service
+metadata:
+  name: website-canary
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

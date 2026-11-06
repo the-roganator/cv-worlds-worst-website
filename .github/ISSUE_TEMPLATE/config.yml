@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Something wrong with the shop?
+    url: https://github.com/the-roganator/cv-software-factory#readme
+    about: The shop has defects on purpose. Tell it through the "Report a problem" box on any page, and Software Factory takes it from there.
+  - name: Report a security vulnerability
+    url: https://github.com/the-roganator/cv-worlds-worst-website/security/advisories/new
+    about: Please report privately, not in a public issue.

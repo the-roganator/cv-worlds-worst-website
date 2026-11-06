@@ -1,0 +1,10 @@
+# The local profile: a k3d cluster on a laptop, where Argo CD renders this directory from main.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - ingress.yaml
+
+components:
+  # The image CI built last, pinned by digest. The factory's App edits only this file, in a pull request.
+  - image

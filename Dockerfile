@@ -17,7 +17,7 @@ RUN node scripts/seed.ts
 # Readable by the unprivileged runtime user, and by nobody's writes.
 RUN chmod -R a+rX,go-w /app
 
-FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:78f07ef1b5ea71ad7c055df15d0dd8997f2d288f9158623c4d4ae3d765b7d50d
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:b8cec4b2f2126ff7bd034ec9ac207ffb3272667dfdc48376e3b035d3270549ba
 COPY --from=build /app /app
 WORKDIR /app
 ARG GIT_COMMIT=unknown

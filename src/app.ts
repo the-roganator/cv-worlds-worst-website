@@ -20,9 +20,9 @@ export interface AppOptions {
   assets: Map<string, Asset>;
   routes: Route[];
   /** The reply when no route matches a path. */
-  notFound(request: Request): Reply;
+  notFound(request: Request): Reply | Promise<Reply>;
   /** The reply when a route throws. It says nothing about why: that goes in the log. */
-  failed(request: Request): Reply;
+  failed(request: Request): Reply | Promise<Reply>;
 }
 
 /** Forms and reports are a few hundred bytes. Anything much larger is not for us. */
@@ -98,7 +98,7 @@ export function createApp({
       const here = routes.filter((route) => matchPath(route.path, path));
       const route = here.find((candidate) => candidate.method === method);
       if (!route) {
-        if (here.length === 0) return await answer(notFound(request));
+        if (here.length === 0) return await answer(await notFound(request));
         const allow = [...new Set(here.flatMap((r) => (r.method === 'GET' ? ['GET', 'HEAD'] : [r.method])))].join(', ');
         return await answer(json(405, { error: `This address only takes ${allow}.` }, { allow }));
       }
@@ -119,7 +119,7 @@ export function createApp({
     } catch (error) {
       log.error({ event: 'error', err: error, method, path, route: routeName }, `${method} ${path} failed`);
       return answer(
-        path.startsWith('/api/') ? json(500, { error: 'Something went wrong at our end.' }) : failed(request),
+        path.startsWith('/api/') ? json(500, { error: 'Something went wrong at our end.' }) : await failed(request),
       );
     }
   };

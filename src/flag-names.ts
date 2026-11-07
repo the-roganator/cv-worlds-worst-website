@@ -6,7 +6,7 @@
  * A name is lower-case letters and digits, in words joined by hyphens (`big-buttons`): the flag context treats any
  * other as off, and a test holds each name here to it. Whether a flag is on is flagd's to say, not this list's.
  */
-export const FLAG_NAMES = [] as const;
+export const FLAG_NAMES = ['dark-mode'] as const;
 
 /** A flag the shop may ask about. */
 export type FlagName = (typeof FLAG_NAMES)[number];

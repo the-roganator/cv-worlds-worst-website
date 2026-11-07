@@ -9,7 +9,7 @@ It exists to be looked after. [Software Factory](https://github.com/the-roganato
 
 ## What is wrong with it
 
-The first commit in this repository already contains more than twenty defects: wrong content, broken navigation, things that don't work, errors, slowness, inaccessible pages, missing security hygiene and gaps in its telemetry. They are real defects in working code, not a simulation.
+The first commit in this repository already contains more than twenty defects: wrong content, broken navigation, things that don't work, errors, slowness, inaccessible pages, missing security hygiene, dependencies with known vulnerabilities and gaps in its telemetry. They are real defects in working code, not a simulation.
 
 Nothing here says where they are. There is no list, and no comment, test or commit that points at one. The factory has to find them the way anyone would: by using the shop, watching its telemetry and reading what visitors report. A private answer key exists only so that the factory's score can be checked.
 

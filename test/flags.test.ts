@@ -287,7 +287,8 @@ describe('caching', () => {
     const missing = await fetch(`${asks.base}/nowhere`);
     expect(missing.status).toBe(404);
     expect(missing.headers.get('cache-control')).toBe('private, no-store');
-    expect((await fetch(`${base}/nowhere`)).headers.get('cache-control')).toBeNull();
+    // The shop's own not-found page asks about dark-mode, so its reply is kept out of any cache too.
+    expect((await fetch(`${base}/nowhere`)).headers.get('cache-control')).toBe('private, no-store');
   });
 
   it('keeps a reply that tells the flag set’s revision out of any cache between, and only that one', async () => {

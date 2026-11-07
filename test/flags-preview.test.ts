@@ -46,7 +46,8 @@ describe('asking to preview a flag', () => {
 
   it('keeps that answer out of any cache between', async () => {
     expect((await ask('/?preview=big-buttons')).headers.get('cache-control')).toBe('private, no-store');
-    expect((await ask('/?preview=no-such-flag')).headers.get('cache-control')).toBeNull();
+    // A page asks about dark-mode, so even a preview of nothing is kept out of any cache.
+    expect((await ask('/?preview=no-such-flag')).headers.get('cache-control')).toBe('private, no-store');
   });
 
   it('works on any page, whatever else its address asks', async () => {

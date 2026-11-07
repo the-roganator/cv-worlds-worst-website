@@ -122,8 +122,8 @@ jobs:
       # and an SBOM it attested. Every change that moves the pin, the App's or anyone's, and only the pin it moves: one
       # made before the image was signed stays as it is until a deploy moves it. HEAD^1 is the base a pull request merges
       # into, or main before the commit pushed to it. The repository's first commit has no parent, and no image is built
-      # before it, so it names the image with no digest: that entry, and only on that commit, has nothing to verify, and
-      # any pin it does make is checked like any other.
+      # before it, so it names the image with no digest and no tag: that entry, and only on that commit, has nothing to
+      # verify. A tag there fails, and any pin it does make is checked like any other.
       - name: Check the image it moves to was signed by build.yml on main
         env:
           FILE: deploy/overlays/local/image/kustomization.yaml
@@ -137,11 +137,11 @@ jobs:
           # The parents the commit itself records, which a shallow checkout does not hide.
           commit=$(git cat-file commit HEAD)
           parents=$(awk '/^$/ { exit } /^parent / { n++ } END { print n + 0 }' <<< "$commit")
-          unpinned=
           if [ "$parents" -eq 0 ]; then
             echo "$FILE: the repository's first commit, with no pin before it, so every pin it names is new"
             before=
-            unpinned=$(yq '.images[] | select(.digest == null and .newTag == null) | .newName + "@"' "$FILE")
+            tagged=$(yq '.images[] | select((.digest // "") == "" and .newTag != null) | .newName + ":" + .newTag' "$FILE")
+            [ -z "$tagged" ] || { echo "::error file=$FILE::$tagged names a tag, not a digest"; exit 1; }
           else
             base=$(git show "HEAD^1:$FILE")
             before=$(yq "$pins" <<< "$base")
@@ -149,9 +149,12 @@ jobs:
           moved=$(comm -13 <(sort -u <<< "$before") <(sort -u <<< "$refs"))
           [ -n "$moved" ] || { echo "$FILE: moves no pin, nothing to check"; exit 0; }
           for ref in $moved; do
-            if grep -qxF "$ref" <<< "$unpinned"; then
-              echo "$ref: names no digest, as the first commit does before any image is built, so there is nothing to verify"
-              continue
+            if [[ "$ref" == *@ ]]; then
+              if [ "$parents" -eq 0 ]; then
+                echo "$ref: names no digest, as the first commit does before any image is built, so there is nothing to verify"
+                continue
+              fi
+              echo "::error file=$FILE::$ref names no digest"; exit 1
             fi
             if ! cosign verify "${trust[@]}" "$ref" > /dev/null; then
               echo "::error file=$FILE::$ref is not signed by $identity"; exit 1

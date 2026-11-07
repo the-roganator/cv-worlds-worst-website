@@ -81,7 +81,9 @@ jobs:
     needs: kind
     if: ${{ !cancelled() && needs.kind.outputs.kind != 'release' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # Room for the signature check's tries: two cosign checks of a moved pin, each with up to four minutes of tries and
+    # 105 seconds of waiting between them.
+    timeout-minutes: 20
     env:
       DEPLOY: ${{ needs.kind.outputs.kind == 'deploy' }}
     steps:
@@ -130,6 +132,21 @@ jobs:
         run: |
           identity="https://github.com/$GITHUB_REPOSITORY/.github/workflows/build.yml@refs/heads/main"
           trust=(--certificate-identity "$identity" --certificate-oidc-issuer https://token.actions.githubusercontent.com)
+          # Sigstore and GHCR fail now and then and answer again soon after. Each check gets four tries, 15, 30 and 60
+          # seconds apart, each cut off after a minute, as build.yml signs: verifying changes nothing, so trying again is
+          # safe, and an image that is not signed still fails, once it has been tried four times. Its notes go to stderr,
+          # so a check's own output can be thrown away without them.
+          retry() {
+            local try
+            for try in 1 2 3 4; do
+              "$@" && return 0
+              [ "$try" -lt 4 ] || break
+              echo "::warning::${1##*/} $2 failed (try $try of 4); trying again in $((15 << (try - 1)))s" >&2
+              sleep $((15 << (try - 1)))
+            done
+            echo "::error::${1##*/} $2 failed four times" >&2
+            return 1
+          }
           pins='.images[] | .newName + "@" + .digest'
           # Each read is its own assignment, so one that fails fails the step rather than checking nothing.
           refs=$(yq "$pins" "$FILE")
@@ -156,10 +173,10 @@ jobs:
               fi
               echo "::error file=$FILE::$ref names no digest"; exit 1
             fi
-            if ! cosign verify "${trust[@]}" "$ref" > /dev/null; then
+            if ! retry cosign verify --timeout 1m "${trust[@]}" "$ref" > /dev/null; then
               echo "::error file=$FILE::$ref is not signed by $identity"; exit 1
             fi
-            if ! cosign verify-attestation --type spdxjson "${trust[@]}" "$ref" > /dev/null; then
+            if ! retry cosign verify-attestation --timeout 1m --type spdxjson "${trust[@]}" "$ref" > /dev/null; then
               echo "::error file=$FILE::$ref has no SBOM attested by $identity"; exit 1
             fi
             echo "$ref: signed by $identity, with its SBOM attested"

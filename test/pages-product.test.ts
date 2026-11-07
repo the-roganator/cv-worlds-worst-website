@@ -30,6 +30,15 @@ describe('a product page', () => {
     expect(textOf((await shop.get('/products/thing-5')).body)).toContain('Last dusted Tuesday 29 September');
   });
 
+  it('renders a product that has never been dusted, without a last-dusted date', async () => {
+    const { status, body } = await shop.get('/products/thing-6');
+    expect(status).toBe(200);
+    expect(tags(body, 'h1')[0]?.text).toBe('Thing, number 6');
+    expect(textOf(body)).toContain('Item 6');
+    expect(textOf(body)).not.toContain('Invalid');
+    expect(textOf(body)).not.toMatch(/Last dusted\s*(Invalid|$)/);
+  });
+
   it('answers 404 for a product we do not stock', async () => {
     expect((await shop.get('/products/thing-99')).status).toBe(404);
   });

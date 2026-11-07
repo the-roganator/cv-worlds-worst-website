@@ -38,8 +38,11 @@ export function productRoute(catalogue: Catalogue): Route {
                 <dd><a href="/products?department=${product.department}">${product.departmentName}</a></dd>
                 <dt>Stock</dt>
                 <dd>${stockLine(product.stock)}</dd>
-                <dt>Last dusted</dt>
-                <dd>${longDate(product.lastDusted ?? '')}</dd>
+                ${
+                  product.lastDusted !== undefined &&
+                  html`<dt>Last dusted</dt>
+                    <dd>${longDate(product.lastDusted)}</dd>`
+                }
               </dl>
               <h2>Gerald's notes</h2>
               <p>${product.notes}</p>

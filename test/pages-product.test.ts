@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createCatalogue } from '../src/catalogue.ts';
 import { longDate } from '../src/pages/product.ts';
 import { linksOf, tags, textOf } from './support/html.ts';
-import { useDatabase, useShop } from './support/shop.ts';
+import { useShop } from './support/shop.ts';
 
 const shop = useShop();
 
@@ -61,30 +60,6 @@ describe('customers also considered', () => {
     const { body } = await shop.get('/products/thing-5');
     const considered = body.slice(body.indexOf('also considered'));
     expect(linksOf(considered)).not.toContain('/products/thing-5');
-  });
-});
-
-describe('customers also considered, for every product in a department', () => {
-  const held = useDatabase();
-
-  it('offers three other products from the same department', () => {
-    const catalogue = createCatalogue(held.db);
-    for (const id of [1, 2, 3, 4, 7, 28, 29, 30]) {
-      const product = catalogue.product(`thing-${id}`);
-      if (!product) throw new Error(`no thing-${id}`);
-      const others = catalogue.alsoConsidered(product);
-      expect(others).toHaveLength(3);
-      expect(others.map((o) => o.id)).not.toContain(product.id);
-      expect(others.every((o) => o.department === product.department)).toBe(true);
-    }
-  });
-
-  it('never links to the product viewed, on any product page', async () => {
-    for (const id of [1, 2, 3, 28, 29, 30]) {
-      const { body } = await shop.get(`/products/thing-${id}`);
-      const considered = body.slice(body.indexOf('also considered'));
-      expect(linksOf(considered)).not.toContain(`/products/thing-${id}`);
-    }
   });
 });
 

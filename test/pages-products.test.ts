@@ -5,8 +5,16 @@ import { useShop } from './support/shop.ts';
 const shop = useShop();
 
 describe('the product list', () => {
-  it('says "Sorry, none in stock" when there is none', async () => {
-    expect(textOf((await shop.get('/products')).body)).toContain('Item 4 · Sorry, none in stock');
+  it('says "None in stock" when there is none', async () => {
+    const text = textOf((await shop.get('/products')).body);
+    expect(text).toContain('Item 4 · None in stock');
+    expect(text).not.toContain('Sorry, none in stock');
+  });
+
+  it('says "None in stock" on the page of a product with none', async () => {
+    const text = textOf((await shop.get('/products/thing-4')).body);
+    expect(text).toContain('None in stock');
+    expect(text).not.toContain('Sorry');
   });
 });
 

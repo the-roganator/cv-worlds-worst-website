@@ -110,7 +110,7 @@ export function createCatalogue(db: Database): Catalogue {
     alsoConsidered: (product) =>
       db.all<Product>(
         'products.also-considered',
-        `${PRODUCT} WHERE d.slug = :department ORDER BY (p.id < :id), p.id LIMIT 3`,
+        `${PRODUCT} WHERE d.slug = :department AND p.id <> :id ORDER BY (p.id < :id), p.id LIMIT 3`,
         { department: product.department, id: product.id },
       ),
 

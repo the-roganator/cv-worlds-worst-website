@@ -54,3 +54,11 @@ describe('longDate', () => {
     expect(longDate('2026-03-02')).toBe('Monday 2 March');
   });
 });
+
+describe('customers also considered', () => {
+  it('never links to the product being viewed', async () => {
+    const { body } = await shop.get('/products/thing-5');
+    const considered = body.slice(body.indexOf('also considered'));
+    expect(linksOf(considered)).not.toContain('/products/thing-5');
+  });
+});

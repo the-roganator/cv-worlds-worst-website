@@ -62,3 +62,13 @@ describe('customers also considered', () => {
     expect(linksOf(considered)).not.toContain('/products/thing-5');
   });
 });
+
+describe('the stock entry', () => {
+  const real = useShop({ catalogue: 'real' });
+
+  it('gives the real count for the doorstop, never "Plenty"', async () => {
+    const text = textOf((await real.get('/products/doorstop')).body);
+    expect(text).toContain('Stock 6 in stock');
+    expect(text).not.toContain('Plenty in stock');
+  });
+});

@@ -7,7 +7,7 @@ import { pounds } from '../money.ts';
 
 export function stockLine(stock: number): string {
   if (stock === 0) return 'Sorry, none in stock';
-  return stock > 5 ? 'Plenty in stock' : `${stock} in stock`;
+  return `${stock} in stock`;
 }
 
 export function productCard(product: Product): Html {

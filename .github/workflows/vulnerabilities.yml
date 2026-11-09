@@ -2,9 +2,13 @@
 # each finding an alert in this repository's code scanning, in the categories `vulnerabilities/01` to
 # `vulnerabilities/20`.
 #
-# The scan lives in Software Factory's repository and is called at a pinned commit, which holds the list of what is
-# scanned here and the scanner's own pin, so a change here cannot narrow it. It checks this repository out as data
-# and runs nothing from it. It runs daily, for the day's new advisories, and on each push to main, for what changed.
+# The scan lives in Software Factory's repository and is called at a pinned commit, whose rules find what this
+# repository runs or pins (its lockfile, deploy overlay and Dockerfiles) and whose own pin names the scanner, so a
+# change here cannot narrow it. It checks this repository out as data and runs nothing from it.
+#
+# It runs daily, for the day's new advisories, on each push to main, for what changed, and by hand on main after a
+# failed day. On a pull request that changes this file it makes its proving run instead: the same scan of the base,
+# whose jobs ask for no permission to upload, so nothing reaches code scanning.
 name: vulnerabilities
 
 on:
@@ -12,11 +16,23 @@ on:
     branches: [main]
   schedule:
     - cron: '23 4 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/vulnerabilities.yml
 
 permissions: {}
 
+# One run at a time for a branch, none cancelled once it has started: on main each run uploads every category, and an
+# older run finishing last would leave its results in place of a newer one's.
+concurrency:
+  group: vulnerabilities-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   vulnerabilities:
+    # The most the called jobs may have: the upload's `security-events: write` reaches only its job on main, which
+    # refuses any other event; the proving run's job asks for `contents` and `packages` alone.
     permissions:
       contents: read
       packages: read # the advisory database and the images in GHCR, with the job's token

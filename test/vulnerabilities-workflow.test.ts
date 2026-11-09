@@ -18,6 +18,8 @@ describe('the daily vulnerability scan', () => {
       '  pull_request:',
     ]);
     expect(triggers).toMatch(/^ {2}push:\n {4}branches: \[main\]$/m);
+    // Once a day, at whatever minute: the advisories it is read against change daily.
+    expect(triggers).toMatch(/^ {2}schedule:\n {4}- cron: '\d{1,2} \d{1,2} \* \* \*'$/m);
     expect(triggers).toMatch(/^ {2}pull_request:\n {4}paths:\n {6}- \.github\/workflows\/vulnerabilities\.yml$/m);
   });
 
@@ -36,7 +38,8 @@ describe('the daily vulnerability scan', () => {
     );
   });
 
-  it('runs one at a time, cancelling none in progress, so an older upload cannot finish last', () => {
+  it('runs one at a time on each branch, cancelling none in progress, so an older upload cannot finish last', () => {
+    expect(workflow).toMatch(/^ {2}group: vulnerabilities-\$\{\{ github\.head_ref \|\| github\.ref \}\}$/m);
     expect(workflow).toMatch(/^ {2}cancel-in-progress: false$/m);
   });
 });

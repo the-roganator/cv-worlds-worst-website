@@ -68,3 +68,14 @@ describe('featured', () => {
     ).toEqual([1, 2, 3, 4]);
   });
 });
+
+describe('also considered', () => {
+  it('is three other products from the same department', () => {
+    const product = catalogue().product('thing-5');
+    if (!product) throw new Error('thing-5 is missing');
+    const others = catalogue().alsoConsidered(product);
+    expect(others).toHaveLength(3);
+    expect(others.some((p) => p.id === product.id)).toBe(false);
+    expect(others.every((p) => p.department === product.department)).toBe(true);
+  });
+});

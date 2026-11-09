@@ -2,7 +2,7 @@
  * What every page shares: the masthead, and the footer with "Report a problem" and the way to the privacy page.
  */
 import { type Html, html } from '../html.ts';
-import { HTML, type Reply } from '../http.ts';
+import { HTML, type Reply, type Request } from '../http.ts';
 import { MAX_REPORT_LENGTH } from '../reports.ts';
 
 export const SHOP = "Mossop's Practical Sundries";
@@ -78,4 +78,13 @@ export function page(status: number, { title, path, body, script }: Page): Reply
 </html>
 `;
   return { status, type: HTML, body: document.text };
+}
+
+const MAIN_STYLESHEET = '<link rel="stylesheet" href="/assets/site.css">';
+const DARK_STYLESHEET = '<link rel="stylesheet" href="/assets/dark.css" media="(prefers-color-scheme: dark)">';
+
+/** A page with the dark stylesheet linked after the main one when the dark-mode flag is on; any other reply as it is. */
+export async function withDarkMode(request: Request, reply: Reply): Promise<Reply> {
+  if (reply.type !== HTML || typeof reply.body !== 'string' || !(await request.flag('dark-mode'))) return reply;
+  return { ...reply, body: reply.body.replace(MAIN_STYLESHEET, () => `${MAIN_STYLESHEET}\n    ${DARK_STYLESHEET}`) };
 }

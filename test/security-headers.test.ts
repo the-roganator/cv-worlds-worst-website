@@ -22,3 +22,23 @@ describe('security headers', () => {
     expect(res.headers.get('server')).toBeNull();
   });
 });
+
+describe('framing protection', () => {
+  it.each(['/', '/products', '/search'])('%s sends a CSP and x-frame-options', async (path) => {
+    const res = await fetch(shop.url(path));
+    const csp = res.headers.get('content-security-policy') ?? '';
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(res.headers.get('x-frame-options')).toBe('DENY');
+  });
+
+  it.each(['/', '/api/products', '/assets/site.css', '/health', '/no-such-page'])(
+    '%s carries both with the others',
+    async (path) => {
+      const res = await fetch(shop.url(path));
+      expect(res.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
+      expect(res.headers.get('x-frame-options')).toBe('DENY');
+      for (const [name, value] of Object.entries(EXPECTED)) expect(res.headers.get(name), name).toBe(value);
+    },
+  );
+});

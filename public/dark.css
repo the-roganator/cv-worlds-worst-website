@@ -1,0 +1,13 @@
+/* The dark palette, linked after site.css and applied only when the browser prefers dark. */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #141a16;
+    --card: #1c241f;
+    --ink: #e6e9dc;
+    --quiet: #a3ad9f;
+    --rule: #3b463e;
+    --link: #e8a877;
+    --alert: #ff9c92;
+  }
+}

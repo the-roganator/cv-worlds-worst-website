@@ -30,6 +30,15 @@ describe('a product page', () => {
     expect(textOf((await shop.get('/products/thing-5')).body)).toContain('Last dusted Tuesday 29 September');
   });
 
+  it('renders a product that has never been dusted, without a last-dusted date', async () => {
+    const { status, body } = await shop.get('/products/thing-6');
+    expect(status).toBe(200);
+    expect(tags(body, 'h1')[0]?.text).toBe('Thing, number 6');
+    expect(textOf(body)).toContain('Item 6');
+    expect(textOf(body)).not.toContain('Invalid');
+    expect(textOf(body)).not.toMatch(/Last dusted\s*(Invalid|$)/);
+  });
+
   it('answers 404 for a product we do not stock', async () => {
     expect((await shop.get('/products/thing-99')).status).toBe(404);
   });
@@ -43,5 +52,23 @@ describe('longDate', () => {
   it('writes a date the way Gerald would say it', () => {
     expect(longDate('2026-09-29')).toBe('Tuesday 29 September');
     expect(longDate('2026-03-02')).toBe('Monday 2 March');
+  });
+});
+
+describe('customers also considered', () => {
+  it('never links to the product being viewed', async () => {
+    const { body } = await shop.get('/products/thing-5');
+    const considered = body.slice(body.indexOf('also considered'));
+    expect(linksOf(considered)).not.toContain('/products/thing-5');
+  });
+});
+
+describe('the stock entry', () => {
+  const real = useShop({ catalogue: 'real' });
+
+  it('gives the real count for the doorstop, never "Plenty"', async () => {
+    const text = textOf((await real.get('/products/doorstop')).body);
+    expect(text).toContain('Stock 6 in stock');
+    expect(text).not.toContain('Plenty in stock');
   });
 });

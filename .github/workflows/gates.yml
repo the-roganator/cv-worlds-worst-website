@@ -1,5 +1,6 @@
 # The gates a pull request to the shop must pass beyond its own lint, types and tests: its journeys compared with the
-# base's, test integrity, dependency review and an image scan, and, as a signal only, whether its tests failed first.
+# base's, test integrity, dependency review, a scan of its lockfile and an image scan, and, as a signal only, whether
+# its tests failed first.
 # They run on the pull request, and again on the merge queue's commit for it, which holds the change on main as it
 # will merge, with the pull requests ahead of it in the queue; whether its tests failed first is said on the pull
 # request alone.

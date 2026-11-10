@@ -28,12 +28,6 @@ on:
 
 permissions: {}
 
-# One run at a time for a branch, none cancelled once it has started: on main each run uploads every category, and an
-# older run finishing last would leave its results in place of a newer one's.
-concurrency:
-  group: vulnerabilities-${{ github.head_ref || github.ref }}
-  cancel-in-progress: false
-
 jobs:
   vulnerabilities:
     # The most the called jobs may have: the upload's `security-events: write` reaches only its job on main, which
@@ -42,11 +36,18 @@ jobs:
       contents: read
       packages: read # the advisory database and the images in GHCR, with the job's token
       security-events: write # upload the results to code scanning
+    # One scan at a time for a branch, none cancelled once it has started: on main each run uploads every category, and
+    # an older run finishing last would leave its results in place of a newer one's. On the scan's job alone, so that a
+    # push's graph never waits behind the schedule's or a run by hand, where GitHub would drop it for the next pending.
+    concurrency:
+      group: vulnerabilities-${{ github.head_ref || github.ref }}
+      cancel-in-progress: false
     uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@ef8fef8588c66825d5b0b9d08ca28452f914eac0 # main
 
   dependency-graph:
     # On a push alone: the graph's job refuses any other event, so it is not called on the schedule, by hand or on a
-    # pull request, and `contents: write` reaches nothing else here.
+    # pull request, and `contents: write` reaches nothing else here. Its called job runs one submission at a time, a
+    # newer push's waiting in place of an older one's, so the graph ends at the newest commit.
     if: ${{ github.event_name == 'push' }}
     permissions:
       contents: write # the dependency submission API, with the job's token

@@ -8,11 +8,21 @@ import { describe, expect, it } from 'vitest';
 const workflows = new URL('../.github/workflows/', import.meta.url);
 const workflow = readFileSync(new URL('vulnerabilities.yml', workflows), 'utf-8');
 
-// A job's block, from its name to the next job, and its grant without comments.
+// A job's block, from its name to the next job, and its grant without comments. Each throws on finding nothing, so an
+// assertion that something is absent cannot pass on an empty string.
+const found = (what: string, match: RegExpExecArray | null) => {
+  if (match?.[1] === undefined) throw new Error(`vulnerabilities.yml: no ${what}`);
+  return match[1];
+};
 const job = (name: string) =>
-  new RegExp(`^ {2}${name}:\\n((?: {4}.*\\n|\\n)*?)(?=^ {2}\\S|(?![\\s\\S]))`, 'm').exec(workflow)?.[1] ?? '';
+  found(
+    `job ${name}`,
+    new RegExp(`^ {2}${name}:\\n((?: {4}.*\\n|\\n)*?)(?=^ {2}\\S|(?![\\s\\S]))`, 'm').exec(workflow),
+  );
 const grant = (block: string) =>
-  (/^ {4}permissions:\n((?: {6}.*\n)*)/m.exec(block)?.[1] ?? '').replace(/^\s*#.*\n/gm, '').replace(/ #.*$/gm, '');
+  found('permissions block', /^ {4}permissions:\n((?: {6}.*\n)*)/m.exec(block))
+    .replace(/^\s*#.*\n/gm, '')
+    .replace(/ #.*$/gm, '');
 
 // The `on:` block, to the next top-level key, without its comments.
 const triggers = (/^on:\n((?:(?![a-z]).*\n)*)/m.exec(workflow)?.[1] ?? '').replace(/^\s*#.*\n/gm, '');
@@ -32,7 +42,7 @@ describe('the daily vulnerability scan', () => {
   });
 
   it('has the scan and the graph, and no other job', () => {
-    expect(workflow.slice(workflow.indexOf('\njobs:\n')).match(/^ {2}[a-z-]+:$/gm)).toEqual([
+    expect(workflow.slice(workflow.indexOf('\njobs:\n')).match(/^ {2}[^\s#][^:]*:/gm)).toEqual([
       '  vulnerabilities:',
       '  dependency-graph:',
     ]);
@@ -58,7 +68,6 @@ describe('the daily vulnerability scan', () => {
     const graph = job('dependency-graph');
     expect(graph).toMatch(/^ {4}if: \$\{\{ github\.event_name == 'push' \}\}$/m);
     expect(grant(graph)).toBe('      contents: write\n');
-    expect(grant(job('vulnerabilities'))).not.toMatch(/contents: write/);
     expect(graph).toMatch(
       /^ {4}uses: the-roganator\/cv-software-factory\/\.github\/workflows\/dependency-graph\.yml@[0-9a-f]{40} # main$/m,
     );
@@ -68,11 +77,11 @@ describe('the daily vulnerability scan', () => {
   // the graph are always the same version of the factory's rules, and a pin moved in one file is moved in all.
   it("calls every one of the factory's workflows at the same commit", () => {
     const pins = readdirSync(workflows)
-      .filter((name) => name.endsWith('.yml'))
+      .filter((name) => /\.ya?ml$/.test(name))
       .flatMap((name) =>
         [
           ...readFileSync(new URL(name, workflows), 'utf-8').matchAll(
-            /^\s*(?:- )?uses: the-roganator\/cv-software-factory\/(\S+)@(\S+)/gm,
+            /^\s*(?:- )?uses:\s*['"]?the-roganator\/cv-software-factory\/([^@\s'"]+)@([^\s'"]+)/gim,
           ),
         ].map(([, path, ref]) => ({ name, path, ref })),
       );
@@ -82,7 +91,11 @@ describe('the daily vulnerability scan', () => {
   });
 
   it('runs one at a time on each branch, cancelling none in progress, so an older upload cannot finish last', () => {
-    expect(workflow).toMatch(/^ {2}group: vulnerabilities-\$\{\{ github\.head_ref \|\| github\.ref \}\}$/m);
-    expect(workflow).toMatch(/^ {2}cancel-in-progress: false$/m);
+    // On the scan's job, not the workflow, so a push's graph never queues behind the schedule's or a run by hand.
+    expect(workflow).not.toMatch(/^concurrency:/m);
+    expect(job('vulnerabilities')).toMatch(
+      /^ {4}concurrency:\n {6}group: vulnerabilities-\$\{\{ github\.head_ref \|\| github\.ref \}\}\n {6}cancel-in-progress: false\n/m,
+    );
+    expect(job('dependency-graph')).not.toMatch(/concurrency/);
   });
 });

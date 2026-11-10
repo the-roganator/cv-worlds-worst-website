@@ -9,6 +9,11 @@
 # It runs daily, for the day's new advisories, on each push to main, for what changed, and by hand on main after a
 # failed day. On a pull request that changes this file it makes its proving run instead: the same scan of the base,
 # whose jobs ask for no permission to upload, so nothing reaches code scanning.
+#
+# On a push to main it also submits the dependency graph: every package the lockfile resolves, indirect ones included,
+# sent to GitHub's dependency submission API, so the graph and Dependabot's alerts hold the whole lockfile and not only
+# what package.json names. The graph's workflow lives beside the scan, at the same commit, and reads this repository's
+# checkout as data.
 name: vulnerabilities
 
 on:
@@ -37,4 +42,12 @@ jobs:
       contents: read
       packages: read # the advisory database and the images in GHCR, with the job's token
       security-events: write # upload the results to code scanning
-    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@ac19619ac613b0dd58f9078b3f22b07c009d8f5d # main
+    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@ef8fef8588c66825d5b0b9d08ca28452f914eac0 # main
+
+  dependency-graph:
+    # On a push alone: the graph's job refuses any other event, so it is not called on the schedule, by hand or on a
+    # pull request, and `contents: write` reaches nothing else here.
+    if: ${{ github.event_name == 'push' }}
+    permissions:
+      contents: write # the dependency submission API, with the job's token
+    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@ef8fef8588c66825d5b0b9d08ca28452f914eac0 # main

@@ -40,12 +40,13 @@ interface NodePin {
 const OFFICIAL = /^(?:docker\.io\/)?(?:library\/)?node:(\d+\.\d+\.\d+)-[\w.-]+@sha256:[0-9a-f]{64}$/;
 const DISTROLESS = /^gcr\.io\/distroless\/nodejs(\d+)-[\w.-]+(?::[\w.-]+)?@sha256:[0-9a-f]{64}$/;
 
-/** Each FROM, in each Dockerfile, that names Node. */
+/** Each FROM, in each Dockerfile, that names Node or could. */
 function nodePins(files = dockerfiles()): NodePin[] {
   return [...files].flatMap(([file, text]) =>
     text.split('\n').flatMap((line, index) => {
-      const ref = /^FROM\s+(?:--platform=\S+\s+)?(\S+)/i.exec(line)?.[1];
-      if (!ref || !/node/i.test(ref.split(/[:@]/)[0] ?? '')) return [];
+      const ref = /^\s*FROM\s+(?:--platform=\S+\s+)?(\S+)/i.exec(line)?.[1];
+      // An image named through a build argument could be Node, and nothing here can say which release: unread.
+      if (!ref || (!ref.includes('$') && !/node/i.test(ref.split(/[:@]/)[0] ?? ''))) return [];
       const release = OFFICIAL.exec(ref)?.[1] ?? DISTROLESS.exec(ref)?.[1] ?? null;
       return [{ where: `${file}:${index + 1}`, ref, release }];
     }),
@@ -72,6 +73,7 @@ const moved = (file: string, from: RegExp, to: string) => {
 describe("Node's pins", () => {
   const node = misePinned();
   const pins = nodePins();
+  const next = Number(node.split('.')[0]) + 1;
   // What a scratch change sets apart beyond what is apart already, so each case below names its own pin alone.
   const newly = (files: Map<string, string>) => {
     const before = new Set(apart(node, pins));
@@ -82,6 +84,8 @@ describe("Node's pins", () => {
     expect(node).toMatch(/^\d+\.\d+\.\d+$/);
     expect(pins.map(({ where }) => where.split(':')[0])).toEqual(['Dockerfile', 'Dockerfile']);
     expect(pins.map(({ release }) => release)).toEqual([node, node.split('.')[0]]);
+    // In the one form check.yml's step reads the build stage's base from.
+    expect(read('Dockerfile')).toMatch(/^FROM node:\S+ AS build$/m);
   });
 
   it("name mise.toml's release, every one", () => {
@@ -89,8 +93,8 @@ describe("Node's pins", () => {
   });
 
   it('come apart when mise.toml moves alone', () => {
-    const later = misePinned(read('mise.toml').replace(/^node = "\d+\.\d+\.\d+"$/m, 'node = "26.1.0"'));
-    expect(later).toBe('26.1.0');
+    const later = misePinned(read('mise.toml').replace(/^node = "\d+\.\d+\.\d+"$/m, `node = "${next}.1.0"`));
+    expect(later).toBe(`${next}.1.0`);
     expect(apart(later, pins).map((pin) => pin.split(' ')[0])).toEqual(pins.map(({ where }) => where));
   });
 
@@ -100,8 +104,10 @@ describe("Node's pins", () => {
   });
 
   it('come apart when the runtime moves to another major alone', () => {
-    const files = moved('Dockerfile', /distroless\/nodejs\d+-/, 'distroless/nodejs26-');
-    expect(newly(files)).toEqual([expect.stringMatching(/^Dockerfile:\d+ gcr\.io\/distroless\/nodejs26-/)]);
+    const files = moved('Dockerfile', /distroless\/nodejs\d+-/, `distroless/nodejs${next}-`);
+    expect(newly(files)).toEqual([
+      expect.stringMatching(new RegExp(`^Dockerfile:\\d+ gcr\\.io/distroless/nodejs${next}-`)),
+    ]);
   });
 
   it('fail on a Node image whose tag does not say its release, or by tag alone', () => {
@@ -115,6 +121,8 @@ describe("Node's pins", () => {
     const files = dockerfiles();
     files.set('.devcontainer/Dockerfile', `FROM mcr.microsoft.com/devcontainers/javascript-node:24\n`);
     expect(newly(files)).toEqual(['.devcontainer/Dockerfile:1 mcr.microsoft.com/devcontainers/javascript-node:24']);
+    files.set('.devcontainer/Dockerfile', 'ARG BASE\n  from $BASE\n');
+    expect(newly(files)).toEqual(['.devcontainer/Dockerfile:2 $BASE']);
   });
 });
 

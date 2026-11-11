@@ -46,8 +46,8 @@ updates:
     schedule:
       interval: weekly
     ignore:
-      # The build image's Node matches mise.toml's (test/toolchain.test.ts), so a bump of it moves mise.toml and mise.lock
-      # in the same pull request. A new major is a decision, not a weekly bump.
+      # Both stages' Node match mise.toml's (test/node-pins.test.ts, and check.yml runs each), so a bump of either moves the
+      # other, mise.toml and mise.lock by hand in the same pull request. A new major is a decision, not a weekly bump.
       - dependency-name: node
         update-types: [version-update:semver-major]
     cooldown:

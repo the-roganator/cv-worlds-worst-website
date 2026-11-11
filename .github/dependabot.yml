@@ -43,6 +43,8 @@ updates:
     directories:
       - /
       - /.devcontainer
+      # Syft, which build.yml attests SBOMs with, by version and digest (deploy/images/syft/Dockerfile).
+      - /deploy/images/syft
     schedule:
       interval: weekly
     ignore:

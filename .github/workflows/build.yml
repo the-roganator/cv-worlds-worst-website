@@ -75,13 +75,51 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # Syft's version is pinned once, in deploy/images/syft/Dockerfile, which Dependabot moves: read here from this
+  # workflow's own commit, so its bump of that file is the whole change. A job of its own, so that nothing is checked out
+  # where the OIDC token can be asked for: a sparse checkout of that one file, with no credentials, and nothing of it
+  # runs. Only the version leaves it.
+  syft-version:
+    name: Syft's version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.pin.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          sparse-checkout: deploy/images/syft/Dockerfile
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Read Syft's version from its pin
+        id: pin
+        env:
+          PIN: deploy/images/syft/Dockerfile
+        run: |
+          set -euo pipefail
+          # One FROM, of Syft's image by version and digest: every FROM line is counted, however it is written, so a
+          # second one fails too.
+          froms=$(grep -iE '^[[:space:]]*FROM[[:space:]]' "$PIN" || true)
+          if [ -z "$froms" ] || [ "$(wc -l <<< "$froms")" -ne 1 ] ||
+            [[ ! $froms =~ ^FROM\ ghcr\.io/anchore/syft:(v[0-9]+\.[0-9]+\.[0-9]+)@sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::$PIN must pin Syft's image once, as FROM ghcr.io/anchore/syft:v<version>@sha256:<digest>"
+            exit 1
+          fi
+          echo "version=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          echo "Syft ${BASH_REMATCH[1]}, from $PIN"
+
   # Signs the image by digest, and attests an SBOM of each of its platforms, made by Syft. A job of its own, so that
   # only it can ask for the workflow's OIDC token, and nothing the image's build runs ever can. If it fails, the image
   # is in GHCR unsigned, and the factory will not propose it until it is run again. A brief failure of Sigstore's or
   # GHCR's is tried again within the job.
   sign:
     name: sign and attest
-    needs: image
+    # Never without Syft's version: download-syft given none would install whatever Syft is newest.
+    needs: [image, syft-version]
     runs-on: ubuntu-24.04
     # Room for every try: three cosign calls with up to four minutes of tries each, the two scans' tries, and up to
     # 105 seconds of waiting between each call's tries.
@@ -96,7 +134,7 @@ jobs:
       - id: syft
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
-          syft-version: v1.54.0
+          syft-version: ${{ needs.syft-version.outputs.version }}
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io

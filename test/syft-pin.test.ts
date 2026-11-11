@@ -69,8 +69,7 @@ describe("Syft's one pin", () => {
       [
         '      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1',
         '        with:',
-        '          repository: ${{ job.workflow_repository }}',
-        '          ref: ${{ job.workflow_sha }}',
+        '          ref: ${{ github.workflow_sha }}',
         `          sparse-checkout: ${PIN}`,
         '          sparse-checkout-cone-mode: false',
         '          persist-credentials: false',

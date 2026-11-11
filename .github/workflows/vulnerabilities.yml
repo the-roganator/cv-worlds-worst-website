@@ -42,7 +42,7 @@ jobs:
     concurrency:
       group: vulnerabilities-${{ github.head_ref || github.ref }}
       cancel-in-progress: false
-    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@ef8fef8588c66825d5b0b9d08ca28452f914eac0 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@a85694a682768bac9cfe7bb4d96b7167d9d3e7b4 # main
 
   dependency-graph:
     # On a push alone: the graph's job refuses any other event, so it is not called on the schedule, by hand or on a
@@ -51,4 +51,4 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     permissions:
       contents: write # the dependency submission API, with the job's token
-    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@ef8fef8588c66825d5b0b9d08ca28452f914eac0 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@a85694a682768bac9cfe7bb4d96b7167d9d3e7b4 # main

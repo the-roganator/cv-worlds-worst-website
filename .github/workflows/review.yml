@@ -53,7 +53,7 @@ jobs:
       pull-requests: read
       # Test integrity's check run at the head, which `low-risk` needs.
       checks: read
-    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@ef8fef8588c66825d5b0b9d08ca28452f914eac0 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@a85694a682768bac9cfe7bb4d96b7167d9d3e7b4 # main
     # The called job names the `review` environment, this repository's, but a secret reaches it only when the caller
     # passes it, even one held in that environment alone. The called workflow declares the key, so it is passed by name,
     # and nothing else is.

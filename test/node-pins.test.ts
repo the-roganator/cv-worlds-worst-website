@@ -72,6 +72,11 @@ const moved = (file: string, from: RegExp, to: string) => {
 describe("Node's pins", () => {
   const node = misePinned();
   const pins = nodePins();
+  // What a scratch change sets apart beyond what is apart already, so each case below names its own pin alone.
+  const newly = (files: Map<string, string>) => {
+    const before = new Set(apart(node, pins));
+    return apart(node, nodePins(files)).filter((pin) => !before.has(pin));
+  };
 
   it('are found: the build stage and the runtime, each read', () => {
     expect(node).toMatch(/^\d+\.\d+\.\d+$/);
@@ -86,34 +91,30 @@ describe("Node's pins", () => {
   it('come apart when mise.toml moves alone', () => {
     const later = misePinned(read('mise.toml').replace(/^node = "\d+\.\d+\.\d+"$/m, 'node = "26.1.0"'));
     expect(later).toBe('26.1.0');
-    expect(apart(later, pins)).toHaveLength(2);
+    expect(apart(later, pins).map((pin) => pin.split(' ')[0])).toEqual(pins.map(({ where }) => where));
   });
 
   it('come apart when the build stage moves alone', () => {
     const files = moved('Dockerfile', /^FROM node:\d+\.\d+\.\d+-/m, 'FROM node:24.99.0-');
-    expect(apart(node, nodePins(files))).toEqual([expect.stringMatching(/^Dockerfile:\d+ node:24\.99\.0-/)]);
+    expect(newly(files)).toEqual([expect.stringMatching(/^Dockerfile:\d+ node:24\.99\.0-/)]);
   });
 
   it('come apart when the runtime moves to another major alone', () => {
     const files = moved('Dockerfile', /distroless\/nodejs\d+-/, 'distroless/nodejs26-');
-    expect(apart(node, nodePins(files))).toEqual([
-      expect.stringMatching(/^Dockerfile:\d+ gcr\.io\/distroless\/nodejs26-/),
-    ]);
+    expect(newly(files)).toEqual([expect.stringMatching(/^Dockerfile:\d+ gcr\.io\/distroless\/nodejs26-/)]);
   });
 
   it('fail on a Node image whose tag does not say its release, or by tag alone', () => {
     const files = moved('Dockerfile', /^FROM node:\d+\.\d+\.\d+-/m, 'FROM node:24-');
-    expect(apart(node, nodePins(files))).toEqual([expect.stringMatching(/^Dockerfile:\d+ node:24-/)]);
+    expect(newly(files)).toEqual([expect.stringMatching(/^Dockerfile:\d+ node:24-/)]);
     const untagged = moved('Dockerfile', /@sha256:[0-9a-f]{64} AS build$/m, ' AS build');
-    expect(apart(node, nodePins(untagged))).toEqual([expect.stringMatching(/^Dockerfile:\d+ node:/)]);
+    expect(newly(untagged)).toEqual([expect.stringMatching(/^Dockerfile:\d+ node:/)]);
   });
 
   it('fail on a FROM that names Node in a way this does not read', () => {
     const files = dockerfiles();
     files.set('.devcontainer/Dockerfile', `FROM mcr.microsoft.com/devcontainers/javascript-node:24\n`);
-    expect(apart(node, nodePins(files))).toEqual([
-      '.devcontainer/Dockerfile:1 mcr.microsoft.com/devcontainers/javascript-node:24',
-    ]);
+    expect(newly(files)).toEqual(['.devcontainer/Dockerfile:1 mcr.microsoft.com/devcontainers/javascript-node:24']);
   });
 });
 

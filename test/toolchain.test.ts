@@ -89,8 +89,10 @@ describe('the toolchain', () => {
     expect(lock.get('pnpm')?.version).toBe(manager);
   });
 
-  it("keeps Node exact, for the images' Node to agree with (test/node-pins.test.ts)", () => {
+  it("keeps Node exact, at the build image's Node", () => {
     expect(wanted.get('node')).toMatch(/^\d+\.\d+\.\d+$/);
+    const image = /^FROM node:(\d+\.\d+\.\d+)-/m.exec(read('Dockerfile'))?.[1];
+    expect(image).toBe(wanted.get('node'));
   });
 
   it('takes a release only once it is three days old, as Dependabot does', () => {

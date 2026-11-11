@@ -10,7 +10,7 @@ lockfile_platforms = ["macos-arm64", "macos-x64", "linux-x64", "linux-arm64"]
 minimum_release_age = "3d"
 
 [tools]
-# Exact: the Node the build stage and the runtime run (Dockerfile); test/node-pins.test.ts and check.yml hold them to it.
+# Exact: the build image's Node (Dockerfile), which test/toolchain.test.ts holds it to.
 node = "24.22.2"
 # The one package.json's packageManager names (test/toolchain.test.ts holds them together).
 pnpm = "12"

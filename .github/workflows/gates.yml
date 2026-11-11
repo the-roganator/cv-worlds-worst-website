@@ -64,6 +64,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: the-roganator/cv-software-factory/.github/workflows/app-gates.yml@eff4e8badd732a5d2065486e1ced7150741f76aa # a factory branch, to try
+    uses: the-roganator/cv-software-factory/.github/workflows/app-gates.yml@84aac7dd4705fb2a7922eae1f67f60fc8986685b # a factory branch, to try
     with:
       skip: ${{ needs.kind.outputs.kind != 'code' }}

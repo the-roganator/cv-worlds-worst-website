@@ -12,8 +12,11 @@ const check = read('check.yml');
 const retryIn = (workflow: string) =>
   (/^( *)retry\(\) \{\n[\s\S]*?^\1\}$/m.exec(workflow)?.[0] ?? '').replace(/^ {10}/gm, '');
 const retry = retryIn(build);
-// The signing step's script, from its `run: |` to the end of the file.
-const script = /^ {8}run: \|\n([\s\S]*?set -euo pipefail[\s\S]*)$/m.exec(build)?.[1] ?? '';
+// The signing step's script, from the `run: |` after its Syft to the end of the file: the signing job is the last.
+const script =
+  /^ {10}SYFT: \$\{\{ steps\.syft\.outputs\.cmd \}\}\n {8}run: \|\n([\s\S]*?set -euo pipefail[\s\S]*)$/m.exec(
+    build,
+  )?.[1] ?? '';
 // check.yml's signature check, to the next step of its job.
 const verify =
   /^ {6}- name: Check the image it moves to was signed by build\.yml on main\n([\s\S]*?)(?=^ {6}- )/m.exec(

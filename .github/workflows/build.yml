@@ -26,6 +26,9 @@ on:
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - .github/workflows/build.yml
+      # Syft's pin, which the signing job reads: its bump builds and signs at once, so a Syft that fails shows on its
+      # own merge.
+      - deploy/images/syft/Dockerfile
   workflow_dispatch:
 
 permissions: {}

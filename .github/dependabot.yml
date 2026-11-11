@@ -43,7 +43,8 @@ updates:
     directories:
       - /
       - /.devcontainer
-      # Syft, which build.yml attests SBOMs with, by version and digest (deploy/images/syft/Dockerfile).
+      # Syft, which build.yml attests SBOMs with, by version and digest (deploy/images/syft/Dockerfile). GHCR gives its
+      # image no release date, so the cooldown holds for it only once GHCR does.
       - /deploy/images/syft
     schedule:
       interval: weekly

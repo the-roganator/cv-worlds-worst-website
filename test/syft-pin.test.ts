@@ -2,12 +2,14 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 // Syft's version is written once, in deploy/images/syft/Dockerfile, which Dependabot moves, and build.yml's signing job
 // reads it from there, from the workflow's own commit, so a bump of the pin is the whole change. The reading step runs
 // here in bash, as the job runs it, against the pin and against pins it must refuse.
 const PIN = 'deploy/images/syft/Dockerfile';
+const root = fileURLToPath(new URL('..', import.meta.url));
 const workflows = new URL('../.github/workflows/', import.meta.url);
 const build = readFileSync(new URL('build.yml', workflows), 'utf-8');
 
@@ -96,16 +98,25 @@ describe("Syft's one pin", () => {
   });
 
   it('is the only place a Syft version is written', () => {
-    for (const file of readdirSync(workflows).filter((name) => /\.ya?ml$/.test(name))) {
-      const lines = readFileSync(new URL(file, workflows), 'utf-8')
+    // Every tracked file but the pin and this test, which writes versions of its own for the pins it refuses.
+    const files = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf-8' })
+      .split('\n')
+      .filter((file) => file && file !== PIN && file !== 'test/syft-pin.test.ts');
+    expect(files).toContain('.github/workflows/build.yml');
+    for (const file of files) {
+      const lines = readFileSync(join(root, file), 'utf-8')
         .split('\n')
         // An action's pin names its own version in a trailing comment, which is not Syft's.
         .map((line) => line.replace(/#\s*v\d+\.\d+\.\d+$/, ''));
       expect(
-        lines.filter((line) => /syft/i.test(line) && /\d+\.\d+\.\d+/.test(line)),
+        lines.filter((line) => /syft/i.test(line) && /\d+\.\d+/.test(line)),
         file,
       ).toEqual([]);
     }
+  });
+
+  it('builds and signs again when it moves', () => {
+    expect(found('push paths', /^ {4}paths:\n((?: {6}.*\n)*)/m.exec(build))).toMatch(new RegExp(`^ {6}- ${PIN}$`, 'm'));
   });
 
   it("gives the version the pin names, and refuses any pin but one of Syft's image by version and digest", () => {

@@ -183,10 +183,30 @@ jobs:
           done
       - if: env.DEPLOY != 'true'
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # Into Docker, under a name of its own, so the next step can run it.
       - if: env.DEPLOY != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           push: false
+          load: true
+          tags: website:check
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # A tag does not say what is in an image: the distroless runtime's names only Node's major, and a digest can move
+      # without its tag. So the Node the image runs, and the Node the build stage's base runs, are read by running them,
+      # and must be the release mise.toml pins (test/node-pins.test.ts holds this step, and the FROMs' tags, to it).
+      - name: Check the image runs the Node mise.toml pins
+        if: env.DEPLOY != 'true'
+        run: |
+          want=$(sed -n 's/^node = "\([0-9.]*\)"$/\1/p' mise.toml)
+          [[ "$want" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error file=mise.toml::mise.toml pins no exact Node (found: ${want:-none})"; exit 1; }
+          build=$(sed -n 's/^FROM \(node:[^ ]*\) AS build$/\1/p' Dockerfile)
+          [ -n "$build" ] || { echo "::error file=Dockerfile::no build stage FROM node:… AS build"; exit 1; }
+          # Each read is its own assignment, so one that fails fails the step rather than comparing nothing.
+          runtime=$(docker run --rm --network none --pull never website:check --version)
+          [ "$runtime" = "v$want" ] || { echo "::error file=Dockerfile::the runtime image runs Node $runtime; mise.toml pins v$want"; exit 1; }
+          echo "the runtime image runs Node $runtime"
+          base=$(docker run --rm --network none --entrypoint node "$build" --version)
+          [ "$base" = "v$want" ] || { echo "::error file=Dockerfile::the build stage's $build runs Node $base; mise.toml pins v$want"; exit 1; }
+          echo "the build stage's $build runs Node $base"

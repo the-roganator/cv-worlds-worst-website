@@ -71,6 +71,7 @@ describe("Syft's one pin", () => {
       [
         '      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1',
         '        with:',
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub's expression, asserted as the workflow's text
         '          ref: ${{ github.workflow_sha }}',
         `          sparse-checkout: ${PIN}`,
         '          sparse-checkout-cone-mode: false',

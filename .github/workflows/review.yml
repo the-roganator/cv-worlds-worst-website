@@ -28,7 +28,7 @@
 # `low-risk` waits for it. A gates run cancelled by a newer push starts nothing, as the newer run will. The pinned gate
 # judges only a `workflow_run`, so this workflow runs on nothing else.
 #
-# A pull request whose run of review-requested.yml GitHub holds for approval (a first-time contributor's fork, a review
+# A pull request whose run of review-requested.yml GitHub holds for approval (an outside contributor's fork, a review
 # by Copilot), or gives no secrets (Dependabot's, perhaps), has no `review` check until Martin approves the run or
 # reviews it, and waits as it would for a failing one. The pinned file's header says how each ends.
 #
@@ -53,7 +53,7 @@ jobs:
       pull-requests: read
       # Test integrity's check run at the head, which `low-risk` needs.
       checks: read
-    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@ef8fef8588c66825d5b0b9d08ca28452f914eac0 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@aa9c44e56333d77edf1c6f146ed095591d13d744 # main
     # The called job names the `review` environment, this repository's, but a secret reaches it only when the caller
     # passes it, even one held in that environment alone. The called workflow declares the key, so it is passed by name,
     # and nothing else is.

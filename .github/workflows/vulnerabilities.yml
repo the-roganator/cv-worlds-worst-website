@@ -6,9 +6,14 @@
 # repository runs or pins (its lockfile, deploy overlay and Dockerfiles) and whose own pin names the scanner, so a
 # change here cannot narrow it. It checks this repository out as data and runs nothing from it.
 #
+# Each finding has a deadline, and the scan fails on a new High or Critical with a fix, one due within a day, or one
+# past its deadline. It groups the findings into moves, each the change that fixes some of them, and uploads them as
+# the artifact `moves` (`moves.json`), which the factory's App reads from main's last finished run.
+#
 # It runs daily, for the day's new advisories, on each push to main, for what changed, and by hand on main after a
 # failed day. On a pull request that changes this file it makes its proving run instead: the same scan of the base,
-# whose jobs ask for no permission to upload, so nothing reaches code scanning.
+# whose jobs ask for no permission to upload, so nothing reaches code scanning, with the deadlines' counts and the
+# moves in its log, failing on none of them.
 #
 # On a push to main it also submits the dependency graph: every package the lockfile resolves, indirect ones included,
 # sent to GitHub's dependency submission API, so the graph and Dependabot's alerts hold the whole lockfile and not only
@@ -31,7 +36,8 @@ permissions: {}
 jobs:
   vulnerabilities:
     # The most the called jobs may have: the upload's `security-events: write` reaches only its job on main, which
-    # refuses any other event; the proving run's job asks for `contents` and `packages` alone.
+    # refuses any other event; the proving run's job asks for `contents`, `packages` and `security-events: read`, to
+    # read when each alert was made.
     permissions:
       contents: read
       packages: read # the advisory database and the images in GHCR, with the job's token
@@ -42,7 +48,7 @@ jobs:
     concurrency:
       group: vulnerabilities-${{ github.head_ref || github.ref }}
       cancel-in-progress: false
-    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@ef8fef8588c66825d5b0b9d08ca28452f914eac0 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@aa9c44e56333d77edf1c6f146ed095591d13d744 # main
 
   dependency-graph:
     # On a push alone: the graph's job refuses any other event, so it is not called on the schedule, by hand or on a
@@ -51,4 +57,4 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     permissions:
       contents: write # the dependency submission API, with the job's token
-    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@ef8fef8588c66825d5b0b9d08ca28452f914eac0 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@aa9c44e56333d77edf1c6f146ed095591d13d744 # main

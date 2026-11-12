@@ -6,6 +6,9 @@
 # request alone.
 #
 # They live in Software Factory's repository and are called at a pinned commit, so a change here cannot loosen them.
+# The three that judge a dependency (dependency review, the lockfile scan and the image scan) take their exceptions
+# from the factory's main, whatever commit is pinned, so they agree on what is excepted, and nothing here excepts
+# anything.
 name: gates
 
 on:
@@ -64,6 +67,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: the-roganator/cv-software-factory/.github/workflows/app-gates.yml@ef8fef8588c66825d5b0b9d08ca28452f914eac0 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/app-gates.yml@aa9c44e56333d77edf1c6f146ed095591d13d744 # main
     with:
       skip: ${{ needs.kind.outputs.kind != 'code' }}

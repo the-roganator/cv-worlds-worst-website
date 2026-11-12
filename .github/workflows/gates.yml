@@ -6,9 +6,9 @@
 # request alone.
 #
 # They live in Software Factory's repository and are called at a pinned commit, so a change here cannot loosen them.
-# The three that judge a dependency (dependency review, the lockfile scan and the image scan) take their exceptions
-# from the factory's main, whatever commit is pinned, so they agree on what is excepted, and nothing here excepts
-# anything.
+# The three that judge a dependency (dependency review, the lockfile scan and the image scan) read their exceptions
+# from the same entries, on the factory's main, whatever commit is pinned, and nothing here excepts anything. The
+# scans hold each entry to its own lockfile or image; dependency review allows its advisory anywhere.
 name: gates
 
 on:

@@ -8,12 +8,13 @@
 #
 # Each finding has a deadline, and the scan fails on a new High or Critical with a fix, one due within a day, or one
 # past its deadline. It groups the findings into moves, each the change that fixes some of them, and uploads them as
-# the artifact `moves` (`moves.json`), which the factory's App reads from main's last finished run.
+# the artifact `moves` (`moves.json`), for the factory's GitHub worker to read from main's last finished run.
 #
 # It runs daily, for the day's new advisories, on each push to main, for what changed, and by hand on main after a
 # failed day. On a pull request that changes this file it makes its proving run instead: the same scan of the base,
-# whose jobs ask for no permission to upload, so nothing reaches code scanning, with the deadlines' counts and the
-# moves in its log, failing on none of them.
+# whose jobs ask for no permission to upload, so nothing reaches code scanning. Its log has the deadlines' counts and
+# the moves, and it uploads the artifact `moves`; it fails on none of the deadlines, but, as the scan does, on any
+# source it cannot read.
 #
 # On a push to main it also submits the dependency graph: every package the lockfile resolves, indirect ones included,
 # sent to GitHub's dependency submission API, so the graph and Dependabot's alerts hold the whole lockfile and not only
@@ -35,9 +36,10 @@ permissions: {}
 
 jobs:
   vulnerabilities:
-    # The most the called jobs may have: the upload's `security-events: write` reaches only its job on main, which
-    # refuses any other event; the proving run's job asks for `contents`, `packages` and `security-events: read`, to
-    # read when each alert was made.
+    # The most the called jobs may have: `security-events: write` reaches only the scan's job on main, which refuses
+    # any other event, to upload its results and hold its categories' alerts to the factory's exceptions (an alert
+    # dismissed with no exception in force is reopened); the proving run's job asks for `contents`, `packages` and
+    # `security-events: read`, to read when each alert was made.
     permissions:
       contents: read
       packages: read # the advisory database and the images in GHCR, with the job's token

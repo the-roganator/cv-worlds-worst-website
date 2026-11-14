@@ -17,28 +17,30 @@ describe('the review gate and merge queue workflows', () => {
     const name = /^name: (.+)$/m.exec(requested)?.[1];
     expect(name).toBe('review requested');
     expect(review).toMatch(
-      /^ {2}workflow_run:\n {4}workflows: \[review requested, gates\]\n {4}types: \[completed\]$/m,
+      /^ {2}workflow_run:\n {4}workflows: \[review requested, gates, check\]\n {4}types: \[completed\]$/m,
     );
   });
 
-  // `low-risk` needs test integrity's run at the head, so the gate judges again when the gates, found by their name,
-  // finish.
-  it('runs the gate again when the gates finish', () => {
-    const name = /^name: (.+)$/m.exec(read('gates.yml'))?.[1];
-    expect(name).toBe('gates');
+  // `low-risk` needs test integrity's run at the head, and `critical-fix` every required check's, so the gate judges
+  // again when the gates and the checks, each found by its name, finish.
+  it.each(['gates', 'check'])('runs the gate again when %s.yml finishes', (file) => {
+    const name = /^name: (.+)$/m.exec(read(`${file}.yml`))?.[1];
+    expect(name).toBe(file);
     expect(/^ {4}workflows: \[(.+)\]$/m.exec(review)?.[1]?.split(', ')).toContain(name);
   });
 
-  // A gates run cancelled by a newer push has nothing to say; the newer run asks.
-  it('skips a cancelled gates run', () => {
+  // A gates or check run cancelled by a newer push has nothing to say; the newer run asks.
+  it('skips a cancelled gates or check run', () => {
     expect(review).toMatch(
-      /^ {4}if: github\.event\.workflow_run\.name != 'gates' \|\| github\.event\.workflow_run\.conclusion != 'cancelled'$/m,
+      /^ {4}if: github\.event\.workflow_run\.name == 'review requested' \|\| github\.event\.workflow_run\.conclusion != 'cancelled'$/m,
     );
   });
 
-  it("grants the gate test integrity's check run, and nothing that writes", () => {
+  // The called workflow asks for these reads and no more: its `critical fix` job reads which workflow made each check
+  // run (`actions: read`), and a called job may have no more than its caller grants.
+  it('grants the gate the reads its jobs ask for, and nothing that writes', () => {
     expect(review).toMatch(
-      /^ {4}permissions:\n {6}contents: read\n {6}pull-requests: read\n(?: {6}#.*\n)* {6}checks: read\n {4}uses:/m,
+      /^ {4}permissions:\n {6}contents: read\n {6}pull-requests: read\n(?: {6}#.*\n)* {6}checks: read\n(?: {6}#.*\n)* {6}actions: read\n {4}uses:/m,
     );
   });
 

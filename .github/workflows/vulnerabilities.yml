@@ -8,7 +8,12 @@
 #
 # Each finding has a deadline, and the scan fails on a new High or Critical with a fix, one due within a day, or one
 # past its deadline. It groups the findings into moves, each the change that fixes some of them, and uploads them as
-# the artifact `moves` (`moves.json`), for the factory's GitHub worker to read from main's last finished run.
+# the artifact `moves` (`moves.json`), with every open finding counted by severity, for the factory's GitHub worker to
+# read from main's last finished run.
+#
+# Main's runs keep, in this repository's Actions cache, Trivy's analysis of each image layer and the day's lookups of
+# registries and releases; a pull request's proving run restores them and never saves. No verdict depends on either:
+# the advisory databases, the alerts and the exceptions are read afresh every run.
 #
 # It runs daily, for the day's new advisories, on each push to main, for what changed, and by hand on main after a
 # failed day. On a pull request that changes this file it makes its proving run instead: the same scan of the base,
@@ -50,7 +55,7 @@ jobs:
     concurrency:
       group: vulnerabilities-${{ github.head_ref || github.ref }}
       cancel-in-progress: false
-    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@aa9c44e56333d77edf1c6f146ed095591d13d744 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@4ae115ec68e06a9c54932eb41424d241f746d666 # main
 
   dependency-graph:
     # On a push alone: the graph's job refuses any other event, so it is not called on the schedule, by hand or on a
@@ -59,4 +64,4 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     permissions:
       contents: write # the dependency submission API, with the job's token
-    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@aa9c44e56333d77edf1c6f146ed095591d13d744 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@4ae115ec68e06a9c54932eb41424d241f746d666 # main

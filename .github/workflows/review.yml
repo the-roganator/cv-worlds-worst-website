@@ -2,9 +2,11 @@
 # review App, on a pull request's head and on the merge queue's commit for it. It works out the pull request's risk
 # tags from its diff and test integrity's run, and passes it by the first rule that holds: Martin opened it, or approved
 # its head after the last push; it is the factory's App's exact pin, every changed line a digest of an image signed on
-# main; it is the App's, with no risk tags and a successful test integrity run at its head (`low-risk`); or, while
-# this repository's AUTONOMY variable is `lights-out`, it is the App's, with tags that are not a release, an
-# improvement or a path CODEOWNERS gives Martin.
+# main; it is the App's, with no risk tags and a successful test integrity run at its head (`low-risk`); it is the
+# App's move of one dependency that fixes a finding the gate's own pinned Trivy rates Critical, proved from its two
+# commits, with every check this repository's ruleset requires passed at its head (`critical-fix`); or, while this
+# repository's AUTONOMY variable is `lights-out`, it is the App's, with tags that are not a release, an improvement or
+# a path CODEOWNERS gives Martin.
 # Anything else is held for Martin, saying why, and the check's summary carries the verdict in a block the factory's
 # line reads. This holds whatever the pull request's base: a stacked one, into the branch below it, is held to main's
 # required checks too, and the queue's commit for one is judged on it and every pull request below it, down to main.
@@ -23,10 +25,16 @@
 # repository's `review` environment, which only main may use. A called workflow's own triggers do not apply, so the
 # triggers are here. A pull request opened, pushed to, reopened, made ready, edited or unlabelled, a review, and the
 # merge queue each run review-requested.yml, this repository's own, which holds nothing; its run starts this one, from
-# main, through `workflow_run`, which names a workflow in the same repository. So does each run of gates.yml that
-# finishes, test integrity among its gates, so the gate judges again once test integrity has its reading: until then,
-# `low-risk` waits for it. A gates run cancelled by a newer push starts nothing, as the newer run will. The pinned gate
-# judges only a `workflow_run`, so this workflow runs on nothing else.
+# main, through `workflow_run`, which names a workflow in the same repository. So does each run of gates.yml,
+# check.yml or pr-title.yml that finishes on a pull request or the merge queue, so the gate judges again once test
+# integrity has its reading, which `low-risk` waits for, and once every check the ruleset requires has its own, which
+# `critical-fix` waits for. One cancelled by a newer push starts nothing, as the newer run will, and check.yml's run on
+# a push to main starts nothing either. The pinned gate judges only a `workflow_run`, so this workflow runs on nothing
+# else.
+#
+# A Critical fix is worked out in the called workflow's `critical fix` job, before the gate, from the factory's code
+# alone, with no secret and read-only permissions: it reads this pull request's two commits as data, and never builds,
+# installs or runs them.
 #
 # A pull request whose run of review-requested.yml GitHub holds for approval (an outside contributor's fork, a review
 # by Copilot), or gives no secrets (Dependabot's, perhaps), has no `review` check until Martin approves the run or
@@ -38,7 +46,7 @@ name: review
 
 on:
   workflow_run:
-    workflows: [review requested, gates]
+    workflows: [review requested, gates, check, pr title]
     types: [completed]
 
 permissions: {}
@@ -47,13 +55,22 @@ jobs:
   # No concurrency here: the called workflow keeps one verdict at a time for a branch, and a caller in the same group
   # would wait on it for ever.
   review:
-    if: github.event.workflow_run.name != 'gates' || github.event.workflow_run.conclusion != 'cancelled'
+    # A run on a push to main (check.yml's) has no pull request to judge. A gates, check or title run cancelled by a newer
+    # push has nothing to say: the newer run asks.
+    if: >-
+      github.event.workflow_run.event != 'push' && (github.event.workflow_run.name == 'review requested' ||
+      github.event.workflow_run.conclusion != 'cancelled')
     permissions:
       contents: read
       pull-requests: read
-      # Test integrity's check run at the head, which `low-risk` needs.
+      # The check runs at the head: test integrity's, which `low-risk` needs, and every required one, which
+      # `critical-fix` needs.
       checks: read
-    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@aa9c44e56333d77edf1c6f146ed095591d13d744 # main
+      # Which workflow made each check run at the head, which `critical-fix` reads: a job of the same name elsewhere
+      # proves nothing. The called pin move job asks for it too, though it never runs here, and a called job may
+      # have no more than its caller grants.
+      actions: read
+    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@4ae115ec68e06a9c54932eb41424d241f746d666 # main
     # The called job names the `review` environment, this repository's, but a secret reaches it only when the caller
     # passes it, even one held in that environment alone. The called workflow declares the key, so it is passed by name,
     # and nothing else is.

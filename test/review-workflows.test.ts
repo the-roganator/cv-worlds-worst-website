@@ -17,28 +17,35 @@ describe('the review gate and merge queue workflows', () => {
     const name = /^name: (.+)$/m.exec(requested)?.[1];
     expect(name).toBe('review requested');
     expect(review).toMatch(
-      /^ {2}workflow_run:\n {4}workflows: \[review requested, gates\]\n {4}types: \[completed\]$/m,
+      /^ {2}workflow_run:\n {4}workflows: \[review requested, gates, check, pr title\]\n {4}types: \[completed\]$/m,
     );
   });
 
-  // `low-risk` needs test integrity's run at the head, so the gate judges again when the gates, found by their name,
-  // finish.
-  it('runs the gate again when the gates finish', () => {
-    const name = /^name: (.+)$/m.exec(read('gates.yml'))?.[1];
-    expect(name).toBe('gates');
+  // `low-risk` needs test integrity's run at the head, and `critical-fix` the run of every check the ruleset requires,
+  // so the gate judges again when each workflow that makes one, found by its name, finishes.
+  it.each([
+    ['gates.yml', 'gates'],
+    ['check.yml', 'check'],
+    ['pr-title.yml', 'pr title'],
+  ])('runs the gate again when %s finishes', (file, expected) => {
+    const name = /^name: (.+)$/m.exec(read(file))?.[1];
+    expect(name).toBe(expected);
     expect(/^ {4}workflows: \[(.+)\]$/m.exec(review)?.[1]?.split(', ')).toContain(name);
   });
 
-  // A gates run cancelled by a newer push has nothing to say; the newer run asks.
-  it('skips a cancelled gates run', () => {
+  // A run cancelled by a newer push has nothing to say, as the newer run asks, and a push to main has no pull request
+  // to judge.
+  it('skips a cancelled run, and a push to main', () => {
     expect(review).toMatch(
-      /^ {4}if: github\.event\.workflow_run\.name != 'gates' \|\| github\.event\.workflow_run\.conclusion != 'cancelled'$/m,
+      /^ {4}if: >-\n {6}github\.event\.workflow_run\.event != 'push' && \(github\.event\.workflow_run\.name == 'review requested' \|\|\n {6}github\.event\.workflow_run\.conclusion != 'cancelled'\)$/m,
     );
   });
 
-  it("grants the gate test integrity's check run, and nothing that writes", () => {
+  // The called workflow asks for these reads and no more: its `critical fix` job reads which workflow made each check
+  // run (`actions: read`), and a called job may have no more than its caller grants.
+  it('grants the gate the reads its jobs ask for, and nothing that writes', () => {
     expect(review).toMatch(
-      /^ {4}permissions:\n {6}contents: read\n {6}pull-requests: read\n(?: {6}#.*\n)* {6}checks: read\n {4}uses:/m,
+      /^ {4}permissions:\n {6}contents: read\n {6}pull-requests: read\n(?: {6}#.*\n)* {6}checks: read\n(?: {6}#.*\n)* {6}actions: read\n {4}uses:/m,
     );
   });
 

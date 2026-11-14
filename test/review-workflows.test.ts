@@ -17,22 +17,27 @@ describe('the review gate and merge queue workflows', () => {
     const name = /^name: (.+)$/m.exec(requested)?.[1];
     expect(name).toBe('review requested');
     expect(review).toMatch(
-      /^ {2}workflow_run:\n {4}workflows: \[review requested, gates, check\]\n {4}types: \[completed\]$/m,
+      /^ {2}workflow_run:\n {4}workflows: \[review requested, gates, check, pr title\]\n {4}types: \[completed\]$/m,
     );
   });
 
-  // `low-risk` needs test integrity's run at the head, and `critical-fix` every required check's, so the gate judges
-  // again when the gates and the checks, each found by its name, finish.
-  it.each(['gates', 'check'])('runs the gate again when %s.yml finishes', (file) => {
-    const name = /^name: (.+)$/m.exec(read(`${file}.yml`))?.[1];
-    expect(name).toBe(file);
+  // `low-risk` needs test integrity's run at the head, and `critical-fix` the run of every check the ruleset requires,
+  // so the gate judges again when each workflow that makes one, found by its name, finishes.
+  it.each([
+    ['gates.yml', 'gates'],
+    ['check.yml', 'check'],
+    ['pr-title.yml', 'pr title'],
+  ])('runs the gate again when %s finishes', (file, expected) => {
+    const name = /^name: (.+)$/m.exec(read(file))?.[1];
+    expect(name).toBe(expected);
     expect(/^ {4}workflows: \[(.+)\]$/m.exec(review)?.[1]?.split(', ')).toContain(name);
   });
 
-  // A gates or check run cancelled by a newer push has nothing to say; the newer run asks.
-  it('skips a cancelled gates or check run', () => {
+  // A run cancelled by a newer push has nothing to say, as the newer run asks, and a push to main has no pull request
+  // to judge.
+  it('skips a cancelled run, and a push to main', () => {
     expect(review).toMatch(
-      /^ {4}if: github\.event\.workflow_run\.name == 'review requested' \|\| github\.event\.workflow_run\.conclusion != 'cancelled'$/m,
+      /^ {4}if: >-\n {6}github\.event\.workflow_run\.event != 'push' && \(github\.event\.workflow_run\.name == 'review requested' \|\|\n {6}github\.event\.workflow_run\.conclusion != 'cancelled'\)$/m,
     );
   });
 

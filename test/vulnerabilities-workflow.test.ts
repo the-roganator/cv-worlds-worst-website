@@ -48,7 +48,7 @@ describe('the daily vulnerability scan', () => {
     ]);
   });
 
-  it('grants the scan what it reads, the last run’s state among it, and its upload, and nothing else', () => {
+  it('grants the scan what it reads and its upload, and nothing else', () => {
     expect(workflow).toMatch(/^permissions: \{\}$/m);
     expect(grant(job('vulnerabilities'))).toBe(
       '      actions: read\n      contents: read\n      packages: read\n      security-events: write\n',

@@ -67,7 +67,7 @@ jobs:
       # mise itself at one named release (test/toolchain.test.ts). With mise.lock beside mise.toml, the action installs
       # with `--locked`: the versions and checksums the lock holds, and it fails when the lock has none for a request,
       # rather than resolve that day's release.
-      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           version: 2026.10.17
       - run: pnpm install --frozen-lockfile
@@ -117,7 +117,7 @@ jobs:
             fi
             echo "$ref: built from $revisions, on main"
           done
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
         with:
           cosign-release: v3.1.3
       # The image carries the signature of build.yml on this repository's main, made with the workflow's own identity,

@@ -51,7 +51,7 @@ describe('the daily vulnerability scan', () => {
   it('grants the scan what it reads and its upload, and nothing else', () => {
     expect(workflow).toMatch(/^permissions: \{\}$/m);
     expect(grant(job('vulnerabilities'))).toBe(
-      '      contents: read\n      packages: read\n      security-events: write\n',
+      '      actions: read\n      contents: read\n      packages: read\n      security-events: write\n',
     );
     expect(workflow).not.toMatch(/secrets/);
   });

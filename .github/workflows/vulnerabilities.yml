@@ -11,9 +11,13 @@
 # the artifact `moves` (`moves.json`), with every open finding counted by severity, for the factory's GitHub worker to
 # read from main's last finished run.
 #
+# Between runs it keeps each finding's days in the artifact `state` of its run, sealed with this repository's key,
+# `SCAN_STATE_KEY`, which the environment `scan-state` holds and only main may use. The next run reads the last one's
+# in place of every alert; with none it can open, it reads the alerts, which hold the same days.
+#
 # Main's runs keep, in this repository's Actions cache, Trivy's analysis of each image layer and the day's lookups of
 # registries and releases; a pull request's proving run restores them and never saves. No verdict depends on either:
-# the advisory databases, the alerts and the exceptions are read afresh every run.
+# the advisory databases and the exceptions are read afresh every run.
 #
 # It runs daily, for the day's new advisories, on each push to main, for what changed, and by hand on main after a
 # failed day. On a pull request that changes this file it makes its proving run instead: the same scan of the base,
@@ -43,9 +47,10 @@ jobs:
   vulnerabilities:
     # The most the called jobs may have: `security-events: write` reaches only the scan's job on main, which refuses
     # any other event, to upload its results and hold its categories' alerts to the factory's exceptions (an alert
-    # dismissed with no exception in force is reopened); the proving run's job asks for `contents`, `packages` and
-    # `security-events: read`, to read when each alert was made.
+    # dismissed with no exception in force is reopened), and `actions: read` to read the last run's state; the proving
+    # run's job asks for `contents`, `packages` and `security-events: read`, to read when each alert was made.
     permissions:
+      actions: read # the last run's state, an artifact of that run
       contents: read
       packages: read # the advisory database and the images in GHCR, with the job's token
       security-events: write # upload the results to code scanning
@@ -55,7 +60,7 @@ jobs:
     concurrency:
       group: vulnerabilities-${{ github.head_ref || github.ref }}
       cancel-in-progress: false
-    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@4ae115ec68e06a9c54932eb41424d241f746d666 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@5314703240ce0e30a78aadc8aa7696c01fba29f8 # main
 
   dependency-graph:
     # On a push alone: the graph's job refuses any other event, so it is not called on the schedule, by hand or on a
@@ -64,4 +69,4 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     permissions:
       contents: write # the dependency submission API, with the job's token
-    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@4ae115ec68e06a9c54932eb41424d241f746d666 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@5314703240ce0e30a78aadc8aa7696c01fba29f8 # main

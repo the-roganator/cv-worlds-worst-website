@@ -22,4 +22,4 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: the-roganator/cv-software-factory/.github/workflows/codeql.yml@5314703240ce0e30a78aadc8aa7696c01fba29f8 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/codeql.yml@664f64def96cdaf1951ac0a9b94515841e41b9fe # main

@@ -53,7 +53,10 @@ describe('the daily vulnerability scan', () => {
     expect(grant(job('vulnerabilities'))).toBe(
       '      actions: read\n      contents: read\n      packages: read\n      security-events: write\n',
     );
-    expect(workflow).not.toMatch(/secrets/);
+    // One secret, the key its state is sealed with, passed by name to the scan's job alone: never `inherit`.
+    expect(workflow.match(/\bsecrets\b/g)).toHaveLength(2);
+    expect(job('vulnerabilities')).toMatch(/^ {4}secrets:\n {6}SCAN_STATE_KEY: \$\{\{ secrets\.SCAN_STATE_KEY \}\}$/m);
+    expect(workflow).not.toMatch(/secrets: inherit/);
   });
 
   it('calls the scan at a full commit', () => {

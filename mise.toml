@@ -11,7 +11,7 @@ minimum_release_age = "3d"
 
 [tools]
 # Exact: the Node both of the Dockerfile's stages run, which test/node-pins.test.ts and check.yml hold them to.
-node = "24.22.2"
+node = "24.22.3"
 # The one package.json's packageManager names (test/toolchain.test.ts holds them together).
 pnpm = "12"
 kustomize = "5"

@@ -63,7 +63,7 @@ export function productsRoutes(catalogue: Catalogue): Route[] {
       handle(request) {
         const department = catalogue.department(request.params.slug ?? '');
         if (!department) return notFound(request);
-        const location = `/departments/${department.slug}`;
+        const location = listUrl(department.slug, 1);
         return { status: 308, type: 'text/plain; charset=utf-8', body: `${location}\n`, headers: { location } };
       },
     },

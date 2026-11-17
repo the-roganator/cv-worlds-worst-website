@@ -44,3 +44,16 @@ describe('a department', () => {
     expect((await shop.get('/departments/attic')).status).toBe(404);
   });
 });
+
+describe('a department address', () => {
+  it('redirects once to the department list, which answers 200', async () => {
+    const first = await shop.get('/departments/garden');
+    expect(first.status).toBe(308);
+    expect(first.headers.get('location')).toBe('/products?department=garden');
+    expect((await shop.get('/products?department=garden')).status).toBe(200);
+  });
+
+  it('answers 404 for a department the catalogue does not have', async () => {
+    expect((await shop.get('/departments/attic')).status).toBe(404);
+  });
+});

@@ -19,4 +19,4 @@ jobs:
     permissions:
       contents: read
       pull-requests: read # the title of the pull request a merge queue's commit was made for
-    uses: the-roganator/cv-software-factory/.github/workflows/pr-title.yml@e3e4298d9d0e5650cb99f9bccc309457c3736102 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/pr-title.yml@6b48abb6eb861f14cd530a1815171158d86780b0 # main

@@ -60,7 +60,7 @@ jobs:
     concurrency:
       group: vulnerabilities-${{ github.head_ref || github.ref }}
       cancel-in-progress: false
-    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@e3e4298d9d0e5650cb99f9bccc309457c3736102 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@6b48abb6eb861f14cd530a1815171158d86780b0 # main
     # The called job names the `scan-state` environment, this repository's, but a secret reaches it only when the
     # caller passes it, even one held in that environment alone. The called workflow declares the key, so it is passed
     # by name, and nothing else is.
@@ -74,4 +74,4 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     permissions:
       contents: write # the dependency submission API, with the job's token
-    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@e3e4298d9d0e5650cb99f9bccc309457c3736102 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/dependency-graph.yml@6b48abb6eb861f14cd530a1815171158d86780b0 # main

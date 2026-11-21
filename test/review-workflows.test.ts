@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-// review.yml calls Software Factory's review gate; review-requested.yml is this repository's copy of the helper that
-// asks it to judge again. `workflow_run` finds the helper by its name alone, so a rename here would stop the gate
+// review.yml calls Software Factory's review gate; pull-request.yml calls the factory's title check and the helper
+// that asks the gate to judge again. `workflow_run` finds it by its name alone, so a rename here would stop the gate
 // looking again after a review, and nothing would fail.
 const read = (name: string) => readFileSync(new URL(`../.github/workflows/${name}`, import.meta.url), 'utf-8');
 const review = read('review.yml');
-const requested = read('review-requested.yml');
+const requested = read('pull-request.yml');
 
 // A workflow's `on:` block, to the next top-level key, without its comments.
 const triggers = (workflow: string) =>
@@ -15,9 +15,9 @@ const triggers = (workflow: string) =>
 describe('the review gate and merge queue workflows', () => {
   it('runs the gate when the helper, found by its name, finishes', () => {
     const name = /^name: (.+)$/m.exec(requested)?.[1];
-    expect(name).toBe('review requested');
+    expect(name).toBe('pull request');
     expect(review).toMatch(
-      /^ {2}workflow_run:\n {4}workflows: \[review requested, gates, check, pr title\]\n {4}types: \[completed\]$/m,
+      /^ {2}workflow_run:\n {4}workflows: \[pull request, gates, check\]\n {4}types: \[completed\]$/m,
     );
   });
 
@@ -26,7 +26,6 @@ describe('the review gate and merge queue workflows', () => {
   it.each([
     ['gates.yml', 'gates'],
     ['check.yml', 'check'],
-    ['pr-title.yml', 'pr title'],
   ])('runs the gate again when %s finishes', (file, expected) => {
     const name = /^name: (.+)$/m.exec(read(file))?.[1];
     expect(name).toBe(expected);
@@ -34,11 +33,12 @@ describe('the review gate and merge queue workflows', () => {
   });
 
   // A run cancelled by a newer push has nothing to say, as the newer run asks, and a push to main has no pull request
-  // to judge.
+  // to judge. Which workflow asked is the event's `workflow`: `workflow_run.name` is that run's title.
   it('skips a cancelled run, and a push to main', () => {
     expect(review).toMatch(
-      /^ {4}if: >-\n {6}github\.event\.workflow_run\.event != 'push' && \(github\.event\.workflow_run\.name == 'review requested' \|\|\n {6}github\.event\.workflow_run\.conclusion != 'cancelled'\)$/m,
+      /^ {4}if: >-\n {6}github\.event\.workflow_run\.event != 'push' && \(github\.event\.workflow\.name == 'pull request' \|\|\n {6}github\.event\.workflow_run\.conclusion != 'cancelled'\)$/m,
     );
+    expect(review).not.toMatch(/workflow_run\.name/);
   });
 
   // The called workflow asks for these reads and no more: its `critical fix` job reads which workflow made each check
@@ -69,7 +69,7 @@ describe('the review gate and merge queue workflows', () => {
   });
 
   // The merge queue waits for every required check on its commit: one that never runs there holds the queue.
-  it.each(['check.yml', 'pr-title.yml', 'gates.yml'])("runs %s on the merge queue's commit", (name) => {
+  it.each(['check.yml', 'pull-request.yml', 'gates.yml'])("runs %s on the merge queue's commit", (name) => {
     expect(read(name)).toMatch(/^ {2}merge_group:\n {4}types: \[checks_requested\]$/m);
   });
 
@@ -99,8 +99,13 @@ describe('the review gate and merge queue workflows', () => {
     expect(requested).toMatch(/^ {2}merge_group:\n {4}types: \[checks_requested\]$/m);
   });
 
-  it('gives the helper no permissions and no secrets', () => {
+  // The title's job reads the pull request a queue's commit was made for; nothing here writes or holds a secret.
+  it('gives the helper reads alone, and no secrets', () => {
     expect(requested).toMatch(/^permissions: \{\}$/m);
-    expect(requested).not.toMatch(/secrets\.|permissions: [^{]|^\s+permissions:$/m);
+    expect(requested).toMatch(/^ {4}permissions:\n {6}contents: read\n {6}pull-requests: read(?: #.*)?\n {4}uses:/m);
+    expect(requested).not.toMatch(/secrets|: write\b/);
+    expect(requested).toMatch(
+      /^ {4}uses: the-roganator\/cv-software-factory\/\.github\/workflows\/pull-request\.yml@[0-9a-f]{40} # main$/m,
+    );
   });
 });

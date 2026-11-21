@@ -71,7 +71,7 @@ jobs:
       # proves nothing. The called pin move job asks for it too, though it never runs here, and a called job may
       # have no more than its caller grants.
       actions: read
-    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@adfb13c4017363bcb193e83199d142b4e45b0bfc # main
+    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@37f3afe5fbf5f3b509b8ca53193933f71c8b2707 # main
     # The called job names the `review` environment, this repository's, but a secret reaches it only when the caller
     # passes it, even one held in that environment alone. The called workflow declares the key, so it is passed by name,
     # and nothing else is.

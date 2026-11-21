@@ -24,9 +24,9 @@
 # Only main's copy runs with the App's key. `workflow_run` runs this workflow as main has it, and the key is in this
 # repository's `review` environment, which only main may use. A called workflow's own triggers do not apply, so the
 # triggers are here. A pull request opened, pushed to, reopened, made ready, edited or unlabelled, a review, and the
-# merge queue each run review-requested.yml, this repository's own, which holds nothing; its run starts this one, from
-# main, through `workflow_run`, which names a workflow in the same repository. So does each run of gates.yml,
-# check.yml or pr-title.yml that finishes on a pull request or the merge queue, so the gate judges again once test
+# merge queue each run pull-request.yml, this repository's own, which holds nothing that can write; its run starts this
+# one, from main, through `workflow_run`, which names a workflow in the same repository. So does each run of gates.yml
+# or check.yml that finishes on a pull request or the merge queue, so the gate judges again once test
 # integrity has its reading, which `low-risk` waits for, and once every check the ruleset requires has its own, which
 # `critical-fix` waits for. One cancelled by a newer push starts nothing, as the newer run will, and check.yml's run on
 # a push to main starts nothing either. The pinned gate judges only a `workflow_run`, so this workflow runs on nothing
@@ -36,7 +36,7 @@
 # alone, with no secret and read-only permissions: it reads this pull request's two commits as data, and never builds,
 # installs or runs them.
 #
-# A pull request whose run of review-requested.yml GitHub holds for approval (an outside contributor's fork, a review
+# A pull request whose run of pull-request.yml GitHub holds for approval (an outside contributor's fork, a review
 # by Copilot), or gives no secrets (Dependabot's, perhaps), has no `review` check until Martin approves the run or
 # reviews it, and waits as it would for a failing one. The pinned file's header says how each ends.
 #
@@ -46,7 +46,7 @@ name: review
 
 on:
   workflow_run:
-    workflows: [review requested, gates, check, pr title]
+    workflows: [pull request, gates, check]
     types: [completed]
 
 permissions: {}
@@ -55,10 +55,11 @@ jobs:
   # No concurrency here: the called workflow keeps one verdict at a time for a branch, and a caller in the same group
   # would wait on it for ever.
   review:
-    # A run on a push to main (check.yml's) has no pull request to judge. A gates, check or title run cancelled by a newer
-    # push has nothing to say: the newer run asks.
+    # A run on a push to main (check.yml's) has no pull request to judge. A gates or check run cancelled by a newer push
+    # has nothing to say: the newer run asks. Which workflow asked is the event's `workflow`, by its name: the asking
+    # run's own name is its title, which a run-name sets.
     if: >-
-      github.event.workflow_run.event != 'push' && (github.event.workflow_run.name == 'review requested' ||
+      github.event.workflow_run.event != 'push' && (github.event.workflow.name == 'pull request' ||
       github.event.workflow_run.conclusion != 'cancelled')
     permissions:
       contents: read
@@ -70,7 +71,7 @@ jobs:
       # proves nothing. The called pin move job asks for it too, though it never runs here, and a called job may
       # have no more than its caller grants.
       actions: read
-    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@e3e4298d9d0e5650cb99f9bccc309457c3736102 # main
+    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@adfb13c4017363bcb193e83199d142b4e45b0bfc # main
     # The called job names the `review` environment, this repository's, but a secret reaches it only when the caller
     # passes it, even one held in that environment alone. The called workflow declares the key, so it is passed by name,
     # and nothing else is.

@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 // vulnerabilities.yml calls Software Factory's daily scan. The scan refuses any event but a push to main, the schedule,
 // a run by hand on main or its proving run on a pull request, and uploads only with the grant here: either slip would
-// stop the scan with nothing failing on a pull request. The same file submits the dependency graph on a push, and every
-// workflow here calls the factory's at one commit.
+// stop the scan with nothing failing on a pull request. The same called workflow submits the dependency graph on a push,
+// and every workflow here calls the factory's at one commit.
 const workflows = new URL('../.github/workflows/', import.meta.url);
 const workflow = readFileSync(new URL('vulnerabilities.yml', workflows), 'utf-8');
 
@@ -41,17 +41,17 @@ describe('the daily vulnerability scan', () => {
     expect(triggers).toMatch(/^ {2}pull_request:\n {4}paths:\n {6}- \.github\/workflows\/vulnerabilities\.yml$/m);
   });
 
-  it('has the scan and the graph, and no other job', () => {
-    expect(workflow.slice(workflow.indexOf('\njobs:\n')).match(/^ {2}[^\s#][^:]*:/gm)).toEqual([
-      '  vulnerabilities:',
-      '  dependency-graph:',
-    ]);
+  // One call: the called workflow has the scan's jobs and the graph's, so a second call would scan twice on a push.
+  it('calls the scan and the graph once, and has no other job', () => {
+    expect(workflow.slice(workflow.indexOf('\njobs:\n')).match(/^ {2}[^\s#][^:]*:/gm)).toEqual(['  vulnerabilities:']);
   });
 
-  it('grants the scan what it reads and its upload, and nothing else', () => {
+  // The graph's job takes `contents: write`, for the dependency submission API, and refuses any event but a push; the
+  // scan's jobs ask for `contents: read`. A called job may have no more than its caller grants.
+  it('grants the scan what it reads and its upload, the graph its submission, and nothing else', () => {
     expect(workflow).toMatch(/^permissions: \{\}$/m);
     expect(grant(job('vulnerabilities'))).toBe(
-      '      actions: read\n      contents: read\n      packages: read\n      security-events: write\n',
+      '      actions: read\n      contents: write\n      packages: read\n      security-events: write\n',
     );
     // One secret, the key its state is sealed with, passed by name to the scan's job alone: never `inherit`.
     expect(workflow.match(/\bsecrets\b/g)).toHaveLength(2);
@@ -62,17 +62,6 @@ describe('the daily vulnerability scan', () => {
   it('calls the scan at a full commit', () => {
     expect(job('vulnerabilities')).toMatch(
       /^ {4}uses: the-roganator\/cv-software-factory\/\.github\/workflows\/vulnerabilities\.yml@[0-9a-f]{40} # main$/m,
-    );
-  });
-
-  // The graph's submission writes to this repository's dependency graph with the job's token, so `contents: write`
-  // goes to that job alone, and only on a push, the one event the graph's job accepts.
-  it('submits the dependency graph on a push alone, with contents: write for that job alone', () => {
-    const graph = job('dependency-graph');
-    expect(graph).toMatch(/^ {4}if: \$\{\{ github\.event_name == 'push' \}\}$/m);
-    expect(grant(graph)).toBe('      contents: write\n');
-    expect(graph).toMatch(
-      /^ {4}uses: the-roganator\/cv-software-factory\/\.github\/workflows\/dependency-graph\.yml@[0-9a-f]{40} # main$/m,
     );
   });
 
@@ -88,17 +77,14 @@ describe('the daily vulnerability scan', () => {
           ),
         ].map(([, path, ref]) => ({ name, path, ref })),
       );
-    expect(pins.length).toBeGreaterThanOrEqual(7);
+    expect(pins.length).toBeGreaterThanOrEqual(6);
     for (const pin of pins) expect(pin.ref, `${pin.name}: ${pin.path}`).toMatch(/^[0-9a-f]{40}$/);
     expect(new Set(pins.map((pin) => pin.ref)).size).toBe(1);
   });
 
-  it('runs one at a time on each branch, cancelling none in progress, so an older upload cannot finish last', () => {
-    // On the scan's job, not the workflow, so a push's graph never queues behind the schedule's or a run by hand.
-    expect(workflow).not.toMatch(/^concurrency:/m);
-    expect(job('vulnerabilities')).toMatch(
-      /^ {4}concurrency:\n {6}group: vulnerabilities-\$\{\{ github\.head_ref \|\| github\.ref \}\}\n {6}cancel-in-progress: false\n/m,
-    );
-    expect(job('dependency-graph')).not.toMatch(/concurrency/);
+  // One upload at a time is the called scan job's own concurrency, for the repository: none here, so a push's graph,
+  // beside the scan in the same call, never waits behind the schedule's scan or a run by hand.
+  it('leaves one upload at a time to the scan job, and holds the graph behind nothing', () => {
+    expect(workflow).not.toMatch(/^ *concurrency:/m);
   });
 });

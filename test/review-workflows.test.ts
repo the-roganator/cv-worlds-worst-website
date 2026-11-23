@@ -16,33 +16,28 @@ describe('the review gate and merge queue workflows', () => {
   it('runs the gate when the helper, found by its name, finishes', () => {
     const name = /^name: (.+)$/m.exec(requested)?.[1];
     expect(name).toBe('pull request');
-    expect(review).toMatch(
-      /^ {2}workflow_run:\n {4}workflows: \[pull request, gates, check\]\n {4}types: \[completed\]$/m,
-    );
+    expect(review).toMatch(/^ {2}workflow_run:\n {4}workflows: \[pull request, gates\]\n {4}types: \[completed\]$/m);
   });
 
-  // `low-risk` needs test integrity's run at the head, and `critical-fix` the run of every check the ruleset requires,
-  // so the gate judges again when each workflow that makes one, found by its name, finishes.
-  it.each([
-    ['gates.yml', 'gates'],
-    ['check.yml', 'check'],
-  ])('runs the gate again when %s finishes', (file, expected) => {
-    const name = /^name: (.+)$/m.exec(read(file))?.[1];
-    expect(name).toBe(expected);
+  // `low-risk` needs test integrity's run at the head, so the gate judges again when the workflow that makes it, found
+  // by its name, finishes.
+  it('runs the gate again when gates.yml finishes', () => {
+    const name = /^name: (.+)$/m.exec(read('gates.yml'))?.[1];
+    expect(name).toBe('gates');
     expect(/^ {4}workflows: \[(.+)\]$/m.exec(review)?.[1]?.split(', ')).toContain(name);
   });
 
-  // A run cancelled by a newer push has nothing to say, as the newer run asks, and a push to main has no pull request
-  // to judge. Which workflow asked is the event's `workflow`: `workflow_run.name` is that run's title.
-  it('skips a cancelled run, and a push to main', () => {
+  // A run cancelled by a newer push has nothing to say, as the newer run asks. Which workflow asked is the event's
+  // `workflow`: `workflow_run.name` is that run's title.
+  it('skips a cancelled run', () => {
     expect(review).toMatch(
-      /^ {4}if: >-\n {6}github\.event\.workflow_run\.event != 'push' && \(github\.event\.workflow\.name == 'pull request' \|\|\n {6}github\.event\.workflow_run\.conclusion != 'cancelled'\)$/m,
+      /^ {4}if: github\.event\.workflow\.name == 'pull request' \|\| github\.event\.workflow_run\.conclusion != 'cancelled'$/m,
     );
     expect(review).not.toMatch(/workflow_run\.name/);
   });
 
-  // The called workflow asks for these reads and no more: its `critical fix` job reads which workflow made each check
-  // run (`actions: read`), and a called job may have no more than its caller grants.
+  // The called workflow asks for these reads and no more: the gate reads test integrity's check run (`checks: read`),
+  // its `move` job the scan's moves (`actions: read`), and a called job may have no more than its caller grants.
   it('grants the gate the reads its jobs ask for, and nothing that writes', () => {
     expect(review).toMatch(
       /^ {4}permissions:\n {6}contents: read\n {6}pull-requests: read\n(?: {6}#.*\n)* {6}checks: read\n(?: {6}#.*\n)* {6}actions: read\n {4}uses:/m,
@@ -88,9 +83,11 @@ describe('the review gate and merge queue workflows', () => {
     );
   });
 
-  it('passes the key in the review environment on to the gate', () => {
+  it('passes the keys in the review and scan-state environments on to the gate', () => {
     // A called workflow sees an environment secret only when its caller passes it, by name.
-    expect(review).toMatch(/^ {4}secrets:\n {6}REVIEW_APP_PRIVATE_KEY: \$\{\{ secrets\.REVIEW_APP_PRIVATE_KEY \}\}$/m);
+    expect(review).toMatch(
+      /^ {4}secrets:\n {6}REVIEW_APP_PRIVATE_KEY: \$\{\{ secrets\.REVIEW_APP_PRIVATE_KEY \}\}\n {6}SCAN_STATE_KEY: \$\{\{ secrets\.SCAN_STATE_KEY \}\}$/m,
+    );
     expect(review).not.toMatch(/secrets: inherit/);
   });
 

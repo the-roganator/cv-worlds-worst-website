@@ -23,4 +23,4 @@ make dev                       # the shop on :8080, restarting on change
 - `deploy/` is GitOps: Argo CD deploys what is on `main`. This repository may deploy only namespaced resources into the `website` namespace.
 - Files listed in `.github/CODEOWNERS` are the rules. Change them only when Martin asks.
 - pnpm installs no release younger than a day, runs no dependency's install script unless `pnpm-workspace.yaml` allows it, and refuses a provenance downgrade.
-- The toolchain moves only when someone upgrades it: `mise upgrade`, which writes `mise.lock`, and both files in a `chore(toolchain)` pull request ([`CONTRIBUTING.md`](CONTRIBUTING.md#working-on-it) says how). Dependabot does not read mise.
+- The toolchain moves only when someone upgrades it: `mise upgrade`, which writes `mise.lock`, and both files in a `chore(toolchain)` pull request ([`CONTRIBUTING.md`](CONTRIBUTING.md#working-on-it) says how). Dependabot does not read mise. The one exception is a move the factory's daily scan asks for: a move of Node, or of an image that runs it, writes Node in `mise.toml` and `mise.lock` and both stages of `Dockerfile` together, in that move's own pull request.

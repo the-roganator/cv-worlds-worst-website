@@ -15,6 +15,11 @@
 # `SCAN_STATE_KEY`, which the environment `scan-state` holds and only main may use. The next run reads the last one's
 # in place of every alert; with none it can open, it reads the alerts, which hold the same days.
 #
+# Once the scan has kept its moves and its state, its `pins` job makes the moves no pin's line writes (a lockfile's
+# package, an image that brings another pin with it) on the commit the scan read, and seals what it made with the same
+# key, as the artifact `pins`. It commits nothing: the factory's line makes each move as of the time the scan judged its
+# moves and with the digest it found for each tag, and the review gate makes it again from what the scan sealed.
+#
 # Main's runs keep, in this repository's Actions cache, Trivy's analysis of each image layer and the day's lookups of
 # registries and releases; a pull request's proving run restores them and never saves. No verdict depends on either:
 # the advisory databases and the exceptions are read afresh every run.
@@ -50,16 +55,16 @@ jobs:
     # factory's exceptions (an alert dismissed with no exception in force is reopened), and `actions: read` to read the
     # last run's state; `contents: write` reaches only the graph's job, on a push alone, for the dependency submission
     # API; the proving runs' jobs ask for `contents`, `packages` and `security-events: read`, to read when each alert
-    # was made. One upload at a time is the called scan job's own concurrency, for this repository, so the graph, beside
-    # it, never waits behind the schedule's scan or a run by hand.
+    # was made; the pins job for `contents: read` alone. One upload at a time is the called scan job's own concurrency,
+    # for this repository, so the graph, beside it, never waits behind the schedule's scan or a run by hand.
     permissions:
       actions: read # the last run's state, an artifact of that run
       contents: write # the dependency submission API, with the graph job's token
       packages: read # the advisory database and the images in GHCR, with the job's token
       security-events: write # upload the results to code scanning
-    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@adfb13c4017363bcb193e83199d142b4e45b0bfc # main
-    # The called job names the `scan-state` environment, this repository's, but a secret reaches it only when the
-    # caller passes it, even one held in that environment alone. The called workflow declares the key, so it is passed
-    # by name, and nothing else is.
+    uses: the-roganator/cv-software-factory/.github/workflows/vulnerabilities.yml@7ee046d0a352388305fe1f9418a7ab93524571e7 # main
+    # The called scan and pins jobs name the `scan-state` environment, this repository's, but a secret reaches them only
+    # when the caller passes it, even one held in that environment alone. The called workflow declares the key, so it is
+    # passed by name, and nothing else is.
     secrets:
       SCAN_STATE_KEY: ${{ secrets.SCAN_STATE_KEY }}

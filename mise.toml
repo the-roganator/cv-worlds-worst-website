@@ -1,7 +1,8 @@
 # The whole toolchain: `mise install` sets up a laptop, and CI and the dev container use the same file. Each tool names
 # the releases it may move within, and mise.lock holds the exact version of each, with the checksum of its download for
 # each platform below, so every install is the same until someone upgrades. To upgrade, `mise upgrade` (within these
-# ranges; `--bump` past them) and a `chore(toolchain)` pull request with both files; Dependabot does not read mise.
+# ranges; `--bump` past them) and a `chore(toolchain)` pull request with both files; Dependabot does not read mise. A
+# move the factory's daily scan asks for writes Node here too, with the images that run it, in its own pull request.
 [settings]
 lockfile = true
 # A Mac (Apple Silicon or Intel), CI's runners, and the dev container on either kind of host.

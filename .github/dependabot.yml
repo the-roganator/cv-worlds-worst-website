@@ -26,18 +26,27 @@ updates:
       tooling:
         dependency-type: development
 
-  # Includes the commit at which Software Factory's shared workflows are called.
+  # Two pull requests: third-party actions, and the commit at which Software Factory's shared workflows are called.
+  # The factory's workflows are a group of their own so that their pull request holds only those pins. Software
+  # Factory's review gate passes exactly that as an exact pin (every call moved to one later commit of its main, and
+  # nothing else changed), and its GitHub worker adds it to the merge queue at the autonomy level Martin set, where
+  # every required check runs as on any change. They take no cooldown: each is a commit Martin merged, so the wait
+  # would guard against nothing. Third-party actions wait for Martin.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     cooldown:
       default-days: 3
+      exclude: ['the-roganator/cv-software-factory/*']
     commit-message:
       prefix: ci
     groups:
+      factory:
+        patterns: ['the-roganator/cv-software-factory/*']
       actions:
         patterns: ['*']
+        exclude-patterns: ['the-roganator/cv-software-factory/*']
 
   - package-ecosystem: docker
     directories:

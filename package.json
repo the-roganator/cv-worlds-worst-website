@@ -25,7 +25,7 @@
     "@opentelemetry/instrumentation-http": "^0.301.1",
     "@opentelemetry/instrumentation-pino": "^0.71.0",
     "@opentelemetry/resources": "^3.1.1",
-    "@opentelemetry/sdk-node": "^0.301.1",
+    "@opentelemetry/sdk-node": "^0.301.2",
     "pino": "^10.4.0"
   },
   "devDependencies": {
